@@ -1,0 +1,248 @@
+{
+  "pes":
+  {
+    "code": "data.gouv.fr_pes",
+    "description": "Données des collectivités publiées via le PES Marché",
+    "url_source": "https://files.data.gouv.fr/decp/dgfip-pes-decp.xml",
+    "format": "xml",
+    "cle_api": ["5bd0b6fd8b4c413d0801dc57"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "aws":
+  {
+    "code": "marches-publics.info",
+    "description": "Marchés attribués sur marches-publics.info",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/5cdb1722634f41416ffe90e2/",
+    "format": "json",
+    "cle_api": ["5cdb1722634f41416ffe90e2"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "decp_aws": {
+    "code": "decp_aws",
+    "description" : "Marchés perdus et récupérés par Thibous et Martin",
+    "url_source" : "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/decp_aws/exports/json?lang=fr",
+    "format" :"json",
+    "url" :"",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "aife":
+  {
+    "code": "data.gouv.fr_aife",
+    "description": "Marchés attribués par l'État ou transmis au service DUME de l'AIFE",
+    "url_source": "https://www.data.gouv.fr/fr/organizations/agence-pour-linformatique-financiere-de-letat/",
+    "format": "xml",
+    "cle_api": ["5bd789ee8b4c4155bd9a0770", "5c3d0d6b8b4c41333775f45a", "5cc8be59634f412a53e309e8", "5df410e86f44413a91d34be3"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "emar":
+  {
+    "code": "e-marchespublics",
+    "description": "Marchés attribués sur e-marchespublics.com",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/5c0a7845634f4139b2ee8883",
+    "format": "json",
+    "cle_api": ["5c0a7845634f4139b2ee8883"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "lyon":
+  {
+    "code": "grandlyon",
+    "description": "Marchés du Grand Lyon publiés sur data.grandlyon.com",
+    "url_source": "https://download.data.grandlyon.com/files/grandlyon/citoyennete/marches_publics.xml",
+    "format": "xml",
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "maxi":
+  {
+    "code": "atexo-maximilien",
+    "description": "Données téléchargées depuis la plateforme marches.maximilien.fr",
+    "url_source": "https://www.data.gouv.fr/datasets/65e0f07ac8d7ad71f10faffb",
+    "format": "json",
+    "cle_api": ["65e0f07ac8d7ad71f10faffb"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "bfc":
+  {
+    "code": "ternum-bfc",
+    "description": "Données publiées par le profil d'acheteur Ternum BFC",
+    "url_source": "http://focus-marches.ternum-bfc.fr/xml/",
+    "format": "xml",
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "mega":
+  {
+    "code": "megalis-bretagne",
+    "description": "Données publiées par le profil d'acheteur Megalis Bretagne",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/5f4f4f8910f4b55843deae51",
+    "format": "xml",
+    "cle_api": ["5f4f4f8910f4b55843deae51"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "bre":
+  {
+    "code": "region-bretagne",
+    "description": "Données publiées par la région bretagne sur son site opendata",
+    "url_source": "https://data.bretagne.bzh/api/v2/catalog/datasets/decp-crb0/exports/json",
+    "format": "json",
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "aife_2024":
+  {
+    "code": "data.gouv.fr_aife",
+    "description": "Ce r\u00e9pertoire propose les XML journaliers de donn\u00e9es essentielles issues de l'API AIFE, \u00e0 compter du 1er mai 2019",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/aife-de-13001977100018/",
+    "format": "xml",
+    "cle_api": ["5df410e86f44413a91d34be3"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "aws_2024":
+  {
+    "code": "marches-publics_aws",
+    "description": "Données essentielles sai…lateforme AW Solutions.",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/declaration-des-donnees-essentielles-avenue-web-systemes/",
+    "format": "json",
+    "cle_api": ["65cf11893fda573b53b19f52"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "pes_2024":
+  {
+    "code": "data.gouv.fr_pes",
+    "description": "Données des collectivités publiées via le PES Marché",
+    "url_source" : "https://www.data.gouv.fr/fr/datasets/r/5cbbd08d-1473-4098-b01a-bbc95b2611ef",
+    "format": "xml",
+    "cle_api": ["65cf3c55ec910b5a8e2fc084"],
+    "url": "",
+    "validate" : false,
+    "convert_nc": true
+  },
+  "atexo_2024":
+  {
+    "code": "data.gouv.fr_atexo",
+    "description": "Données essentielles du profil acheteur Plateforme Mutualisée d'ATEXO",
+    "url_source" : "https://www.data.gouv.fr/fr/organizations/atexo-decp/",
+    "format": "json",
+    "cle_api_atexo": ["673f323ec296c295e64c5dc0"],
+    "cle_api": ["672721aaec64ca6d86444166","672720eb3d9ba78898cbb6aa","67272199922b37b9b2f1b654","672720d97c0997c624f8e336","67272093922b37b9b2f1b653","672720b0b8b33f91e6032bfe","672720321f1de4860c84baff","672720fa753525dfd8368aca","6727201449625899ea32c0d4","67271f9e05321453957baec7","672720cb97702d39796f4edc","67272196d3c5ca95c62e7c63","672720b5cc0f6e1e1dba8f00","672721d097702d39796f4edd","672720dbd3c5ca95c62e7c62","67271fa6290200f00fce1fcc","672720e0cdbaec7aa4f43f4f","672720e2753525dfd8368ac8","67271f982276221b3ffd463d","67272125cc0f6e1e1dba8f01","6727211e60854f01267aaf19","672720f0f12888a874bc2861","672720e71f1de4860c84bb01","672720f51f1de4860c84bb02","672721842b370d8b3227704d","67271fda43aad6253355b458","672720bb3b056f39537f239f","672720e451bcff5f90f6f9e4","67271f8e43aad6253355b457","672720ee720fd33a184a47a3","6727210c720fd33a184a47a4","67271fa3f265db6119a6b6b0","6727217e51bcff5f90f6f9e5","67305b223bb03813db8efe33","672720b71f1de4860c84bb00","672720f8753525dfd8368ac9","672720b2acd2250747936742"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "emar_2024":
+  {
+    "code": "e-marchespublics",
+    "description": "Marchés attribués sur e-marchespublics.com",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/5c0a7845634f4139b2ee8883",
+    "format": "json",
+    "cle_api": ["5c0a7845634f4139b2ee8883"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "megalis_2024":
+  {
+    "code": "megalis",
+    "description": "Données essentielles du profil acheteur Mégalis Bretagne - schéma arrêtés 2022",
+    "url_source": "https://static.data.gouv.fr/resources/donnees-essentielles-du-profil-acheteur-megalis-bretagne-schema-arretes-2022/20241205-070434/decp-2024.json",
+    "format": "json",
+    "cle_api": [],
+    "cle_api_OLD": ["65f18014e9923e9e71f5f258"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "xmarches_2024":
+  {
+    "code": "xmarches",
+    "description": "Données essentielles des marchés publics - Xmarchés",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/donnees-essentielles-des-marches-publics-xmarches/",
+    "format": "json",
+    "cle_api": ["651eb149add2f419788c36ef"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+  },
+  "ppsmj":
+  {
+    "code": "ppsmj",
+    "description": "Données essentielles marché PPSMJ 2024 Région ile de France",
+    "url_source": "https://www.data.gouv.fr/fr/datasets/67920206904b58f1a43a72a4",
+    "format": "xml",
+    "cle_api": ["67920206904b58f1a43a72a4"],
+    "url": "",
+    "validate" : true,
+    "convert_nc": false
+
+  },
+  "geoflar":
+  {
+	  "description": "Fichier permettant d'enrichir les champs : INSEE COM, Geo point, SUPERFICIE, POPULATION",
+	  "url_source": "https://public.opendatasoft.com/explore/dataset/geoflar-communes-2015/download/?format=csv&timezone=Europe/Berlin&lang=fr&use_labels_for_header=true&csv_separator=%3B",
+	  "cle_api": "",
+	  "format": ".csv"
+  },
+  "cpv":
+  {
+      "description": "Liste des codes CPV       (FICHIER DIFFERENT DE CELUI DU PRESTATAIRE)",
+      "url_source": "https://www.economie.gouv.fr/files/files/directions_services/daj/marches_publics/oeap/recensement/cpv_2008_fr.xls",
+      "cle_api": "",
+      "format": ".xls"
+  },
+  "departement": {
+        "description": "Liste des départements",
+        "url_source": "https://www.insee.fr/fr/statistiques/fichier/4316069/departement2020-csv.zip",
+        "cle_api": "",
+        "format": ".csv"
+  },
+  "region": {
+        "description": "Liste des régions",
+        "url_source": "https://www.insee.fr/fr/statistiques/fichier/4316069/region2020-csv.zip",
+        "cle_api": "",
+        "format": ".csv"
+  },
+  "commune": {
+        "description": "Liste des communes",
+        "url_source": "https://www.insee.fr/fr/statistiques/fichier/5057840/commune2021-csv.zip",
+        "cle_api": "",
+        "format": ".csv"
+  },
+  "arrondissement": {
+        "description": "Liste des arrondissement",
+        "url_source": "https://www.insee.fr/fr/statistiques/fichier/5057840/arrondissement2021-csv.zip",
+        "cle_api": "",
+        "format": ".csv"
+  },
+  "stockEtablissement": {
+        "description": "Fichier stock des établissements (établissements actifs et fermés dans leur état courant au répertoire)",
+        "url_source": "https://files.data.gouv.fr/insee-sirene/StockEtablissement_utf8.zip",
+        "cle_api": "0651fb76-bcf3-4f6a-a38d-bc04fa708576",
+        "format": "_utf8.csv"
+  },
+  "stockUniteLegale": {
+        "description": "Fichier stock des unités légales (unités légales actives et cessées dans leur état courant au répertoire)",
+        "url_source": "https://files.data.gouv.fr/insee-sirene/StockUniteLegale_utf8.zip",
+        "cle_api": "825f4199-cadd-486c-ac46-a65a8ea1a047",
+        "format": "_utf8.csv"
+  }
+}
