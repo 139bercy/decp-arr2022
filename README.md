@@ -1,4 +1,4 @@
-# decp arrêté du 22 décembre 2022
+# DECP - Arrêté du 22 décembre 2022 relatif aux données essentielles des marchés publics
 
 Voici le lien donnant les informations requises concernant les DECP (les données essentielles de la commande publique) sur [le blog de data.gouv.fr](https://www.data.gouv.fr/fr/posts/le-point-sur-les-donnees-essentielles-de-la-commande-publique/).
 
