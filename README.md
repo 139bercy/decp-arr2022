@@ -1,10 +1,10 @@
 # decp arrêté du 22 décembre 2022
 
-Voici le lien donnat les informations requises concernant les DECP ou les données essentielles de la commande publique (ou DECP) sur [le blog de data.gouv.fr](https://www.data.gouv.fr/fr/posts/le-point-sur-les-donnees-essentielles-de-la-commande-publique/).
+Voici le lien donnant les informations requises concernant les DECP (les données essentielles de la commande publique) sur [le blog de data.gouv.fr](https://www.data.gouv.fr/fr/posts/le-point-sur-les-donnees-essentielles-de-la-commande-publique/).
 
 Les données aggrégées sont publiées ici : (**[jeu de données sur data.gouv.fr](https://www.data.gouv.fr/fr/datasets/5cd57bf68b4c4179299eb0e9)**) aux formats JSON et XML réglementaires.
 
-La procédure standard est la suivante pour chaque source de données :
+La procédure standard est la suivante (pour chaque source de données) :
 
 ### **1. ETAPE GET**
 
