@@ -683,11 +683,11 @@ class GlobalProcess:
                 marche = marche_in.copy()
                 if 'backup__montant' in marche_in:
                     marche['montant'] = marche['backup__montant']
-                if 'backup__datePublicationDonnees' in marche_in:
+                if 'backup__datePublicationDonnees' in marche_in and not pd.isna(marche['backup__datePublicationDonnees']):
                     marche['datePublicationDonnees'] = marche['backup__datePublicationDonnees']
                     
                 self._restore_attributes_by_prefix(marche,'backup__')
-                self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
+                self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance','backup__')
 
                 marches.append(marche)
             
@@ -697,7 +697,7 @@ class GlobalProcess:
                 if 'backup__montant' in marche_in:
                     marche['montant'] = marche['backup__montant']
                 self._restore_attributes_by_prefix(marche,'backup__')
-                self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
+                self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance','backup__')
 
                 marches.append(marche)
 
@@ -729,16 +729,6 @@ class GlobalProcess:
             delete_attributes_by_prefix(marche,'report__')
             delete_attributes_by_prefix(marche,'tmp__')
 
-            if 'report__file' in marche:
-                del marche["report__file"]
-            if 'report__nbtotal' in marche:
-                del marche["report__nbtotal"]
-            if 'report__error' in marche:
-                del marche["report__error"]
-            if 'report__path' in marche:
-                del marche["report__path"]
-            if 'report__position' in marche:
-                del marche["report__position"]
             if 'idAccordCadre' in marche and (marche['idAccordCadre'] == '' or pd.isna(marche['idAccordCadre'])):
                 del marche["idAccordCadre"]
             if 'origineUE' in marche and (marche['origineUE'] == '' or pd.isna(marche['origineUE'])):
@@ -747,11 +737,6 @@ class GlobalProcess:
                 del marche["origineFrance"]
             if 'tauxAvance' in marche and (marche['tauxAvance'] == '' or pd.isna(marche['tauxAvance'])):
                 del marche["tauxAvance"]
-            self.force_int_or_nc('dureeMois',marche)
-            self.force_int_or_nc('offresRecues',marche)
-            self.force_bool_or_nc('marcheInnovant',marche)
-            self.force_bool_or_nc('attributionAvance',marche)
-            self.force_bool_or_nc('sousTraitanceDeclaree',marche)
 
             if 'modifications' in marche and isinstance(marche['modifications'],list) and len(marche['modifications'])==0:
                 del marche['modifications']                
@@ -769,12 +754,18 @@ class GlobalProcess:
             if 'backup__montant' in marche_in:
                 marche['montant'] = marche['backup__montant']
                 del marche['backup__montant']
-            if 'backup__datePublicationDonnees' in marche_in:
+            if 'backup__datePublicationDonnees' in marche_in and not marche['backup__datePublicationDonnees'] == np.nan:
                 marche['datePublicationDonnees'] = marche['backup__datePublicationDonnees']
                 del marche['backup__datePublicationDonnees']
             
             self._restore_attributes_by_prefix(marche,'backup__')
-            self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance')
+            self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance','backup__')
+
+            self.force_int_or_nc('dureeMois',marche)
+            self.force_int_or_nc('offresRecues',marche)
+            self.force_bool_or_nc('marcheInnovant',marche)
+            self.force_bool_or_nc('attributionAvance',marche)
+            self.force_bool_or_nc('sousTraitanceDeclaree',marche)
 
             if '_type' in marche and marche['_type'] != 'Marché':
                 if 'montant' in marche:
@@ -1046,17 +1037,15 @@ class GlobalProcess:
         for key in keys_to_delete:
             if marche[key] == 'NC':
                 marche[key[len(prefix):]] = marche[key]
-            if pd.isna(marche[key]):
-                marche[key[len(prefix):]] = marche[key]
-            if pd.isna(marche[key]):
+            if not pd.isna(marche[key]):
                 marche[key[len(prefix):]] = marche[key]
             del marche[key]
 
-    def _restore_attributes_by_prefix_in_node(self,marche,node_parent:str,node_child:str):
+    def _restore_attributes_by_prefix_in_node(self,marche,node_parent:str,node_child:str,prefix:str):
         if node_parent in marche and isinstance(marche[node_parent],list):
             for element in marche[node_parent]:
                 if node_child in element and isinstance(element[node_child],dict):
-                    self._restore_attributes_by_prefix(element[node_child],'backup__')
+                    self._restore_attributes_by_prefix(element[node_child],prefix)
 
 
     
@@ -1066,7 +1055,8 @@ class GlobalProcess:
                 # Convertir la valeur en entier
                 marche[cle] = int(marche[cle])
             except ValueError:
-                logging.warning(f"Erreur : la valeur de la clé '{cle}' ne peut pas être convertie en entier.")
+                None
+                #logging.warning(f"Erreur : la valeur de la clé '{cle}' ne peut pas être convertie en entier.")
             except TypeError:
                 logging.warning(f"Erreur : la valeur de la clé '{cle}' est de type incompatible pour la conversion.")
 

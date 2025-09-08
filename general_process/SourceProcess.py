@@ -58,6 +58,7 @@ class SourceProcess:
         self.format = self.metadata[self.key]["format"]
         self.url_source = self.metadata[self.key]["url_source"]
         self.date_pattern = re.compile(r'\d{4}-\d{2}-\d{2}')
+        self.date_pattern_year = re.compile(r'-20\d{2}.')
         self.date_pattern_inv = re.compile(r'\d{2}\.{1}\d{2}\.{1}\d{4}')
             
         self.validate = self.metadata[self.key]["validate"]
@@ -177,8 +178,8 @@ class SourceProcess:
             ## Code for generate all files for months and year between given dates 
             # Filter by date in title, url
             """
-            begin_date_txt = "2025-01-01"
-            end_date_txt = "2025-12-31"
+            begin_date_txt = "2024-01-01"
+            end_date_txt = "2024-12-31"
             begin_date = datetime.strptime(begin_date_txt, "%Y-%m-%d")
             end_date = datetime.strptime(end_date_txt, "%Y-%m-%d")
             
@@ -187,7 +188,7 @@ class SourceProcess:
             for u, t in zip(url, title):
                 match = self.date_pattern.search(u)
                 if match:
-                    file_date = match.group()
+                    file_date = match.group() #[1:5]+"-01-01"
                     if begin_date_txt <= file_date <= end_date_txt:
                         filtered_url.append(u)
                         filtered_title.append(t)
@@ -199,10 +200,10 @@ class SourceProcess:
                             filtered_url.append(u)
                             filtered_title.append(t)
                     else:
-                        #if "-2024" in t or "-2025" in t:
-                        # Date not found in url, we keep the file for further analysis
-                        filtered_url.append(u)
-                        filtered_title.append(t)
+                        if "-2024" in t or "-2025" in t:
+                            # Date not found in url, we keep the file for further analysis
+                            filtered_url.append(u)
+                            filtered_title.append(t)
             url = filtered_url
             title = filtered_title
             """
@@ -321,7 +322,7 @@ class SourceProcess:
         Grâce à la fonction validation_format, une sélection est effectuée sur ces
         dictionnaires pour séparer les marchés et les concessions respectant le format 
         des "mauvais".
-        """        
+        """   
         logging.info("--- ÉTAPE CLEAN")
         logging.info("Début du nettoyage des nouveaux fichiers")
         #Ouverture des fichiers
@@ -451,7 +452,7 @@ class SourceProcess:
             # Adding source and file_name for reporting
             rec['report__file'] = file_name
             if source not in rec:
-                rec['source'] = self.source
+                rec['source'] = source
             rec['report__position'] = position
             if error_message is not None:
                 rec['report__error'] = error_message
@@ -477,10 +478,17 @@ class SourceProcess:
         error_message = None
         aucun_marches = False
 
+        local_source = None
+
         if 'marche' in dico and isinstance(dico['marche'],list):
             while n < len(dico['marche']) :
                 #self.dico_2022_marche.append(dico['marche'][n])
                 if dico['marche'][n] is not None:
+                    if 'source' in dico['marche'][n]:
+                        local_source = dico['marche'][n]["source"]
+                        del dico['marche'][n]["source"]
+                    else:
+                        local_source = None
                     dico_test = {'marches': {'marche': [dico['marche'][n]], 'contrat-concession': []}}
 
                     valid,error_message,error_path = self.check_json_batch(dico_test,draft_validator)
@@ -488,7 +496,7 @@ class SourceProcess:
                         #self.dico_2022_marche.remove(dico['marche'][n])
                         dico_ignored_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
                     else: 
-                        self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source,file_name,year_month,n,error_message,error_path))
+                        self.dico_2022_marche.append(complete_util_info(dico['marche'][n],self.source if local_source is None else local_source,file_name,year_month,n,error_message,error_path))
                         nb_good_marches+=1
                 n+=1
         elif 'marche' in dico:
@@ -504,6 +512,11 @@ class SourceProcess:
             while m < len(dico['contrat-concession']) :
                 #self.dico_2022_concession.append(dico['contrat-concession'][m])
                 if dico['contrat-concession'][m] is not None:
+                    if 'source' in dico['contrat-concession'][m]:
+                        local_source = dico['contrat-concession'][m]["source"]
+                        del dico['contrat-concession'][m]["source"]
+                    else:
+                        local_source = None
                     dico_test = {'marches': {'marche': [], 'contrat-concession': [dico['contrat-concession'][m]]}}
 
                     valid,error_message,error_path = self.check_json(dico_test)
@@ -511,7 +524,7 @@ class SourceProcess:
                         #self.dico_2022_concession.remove(dico['contrat-concession'][m])
                         dico_ignored_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,year_month,m,error_message,error_path))
                     else: 
-                        self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source,file_name,year_month,m,error_message,error_path))
+                        self.dico_2022_concession.append(complete_util_info(dico['contrat-concession'][m],self.source if local_source is None else local_source,file_name,year_month,m,error_message,error_path))
                         nb_good_concessions+=1
                 m+=1
         elif 'contrat-concession' in dico:
@@ -736,7 +749,7 @@ class SourceProcess:
         logging.info("--- ÉTAPE FIX")
         logging.info(f"Début de fix: Ajout source et suppression des doublons de {self.source}")
         # Ajout de source
-        self.df = self.df.assign(source=self.source)
+        #self.df = self.df.assign(source=self.source)
 
         # Application de la fonction de tri
         if 'titulaires' in self.df.columns:
@@ -755,12 +768,18 @@ class SourceProcess:
             self.enlever_nc_colonne(self.df,'variationPrix')
             self.enlever_nc_colonne_inside(self.df,'dureeMois','actesSousTraitance','acteSousTraitance')
             self.enlever_nc_colonne_inside(self.df,'variationPrix','actesSousTraitance','acteSousTraitance')
+        else:
+            self.simple_backup_colonne(self.df,['offresRecues','marcheInnovant','attributionAvance','sousTraitanceDeclaree','dureeMois','variationPrix'])
+            self.simple_backup_colonne_inside(self.df,'dureeMois','actesSousTraitance','acteSousTraitance')
+            self.simple_backup_colonne_inside(self.df,'variationPrix','actesSousTraitance','acteSousTraitance')
 
         # Transformation des acheteurs
         if "acheteur" in self.df.columns:
             df_marche = self.df.loc[self.df['nature'].str.contains('March', case=False, na=False)] #on récupère que les lignes de nature "marché"
             self.df.loc[df_marche.index,['id','acheteur']]= self.df.loc[df_marche.index,['id','acheteur']].apply(update_id,axis=1)
         # Force type integer on column offresRecues
+        if "dureeMois" in self.df.columns: 
+            self.df['dureeMois'] = self.df['dureeMois'].fillna(0).astype(int)
         if "offresRecues" in self.df.columns: 
             self.df['offresRecues'] = self.df['offresRecues'].fillna(0).astype(int)
         if "marcheInnovant" in self.df.columns:
@@ -807,6 +826,12 @@ class SourceProcess:
         logging.info(f"Fix de {self.source} OK")
         logging.info(f"Nombre de marchés et de concession dans {self.source} après fix : {len(self.df)}")
 
+    def simple_backup_colonne(self,df: pd.DataFrame,liste_colonnes:list):
+        for nom_colonne in liste_colonnes:
+            if nom_colonne in df.columns:
+                df['backup__' + nom_colonne] = df[nom_colonne]
+        return df
+    
 
     def enlever_nc_colonne(self,df: pd.DataFrame,nom_colonne:str) -> pd.DataFrame:
         if nom_colonne in df.columns:
@@ -818,7 +843,19 @@ class SourceProcess:
         
         return df
 
-
+    def simple_backup_colonne_inside(self,df: pd.DataFrame,nom_colonne:str,nom_noeud:str,nom_element:str) -> pd.DataFrame:
+        def backup_colonne (content,noeud:str,sous_element:str,colonne:str):
+            if isinstance(content,list):
+                for element in content:
+                    if sous_element in element and isinstance(element[sous_element],dict):
+                        element[sous_element]['backup__'+colonne] = element[sous_element][colonne]
+            return content
+        if nom_noeud in df.columns:
+            #probleme de reimport si ajout de colonne df[nom_colonne+'_source'] = df[nom_colonne]
+            df[nom_noeud] = df[nom_noeud].apply(backup_colonne,noeud=nom_noeud,sous_element=nom_element,colonne=nom_colonne)
+        
+        return df
+    
     def enlever_nc_colonne_inside(self,df: pd.DataFrame,nom_colonne:str,nom_noeud:str,nom_element:str) -> pd.DataFrame:
         def replace_nc (content,noeud:str,sous_element:str,colonne:str):
             if isinstance(content,list):
