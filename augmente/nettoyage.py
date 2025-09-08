@@ -270,6 +270,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         else:
             df_concession['objet'] = df_concession['objet'].str.replace('\n', '\\n', regex=False)
             df_concession['objet'] = df_concession['objet'].str.replace('\r', '\\r', regex=False)
+            df_concession['objet'] = df_concession['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_concession,False,False)
         convert_boolean(df_concession)
     df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True)
@@ -283,6 +284,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         else:
             df_marche['objet'] = df_marche['objet'].str.replace('\n', '\\n', regex=False)
             df_marche['objet'] = df_marche['objet'].str.replace('\r', '\\r', regex=False)
+            df_marche['objet'] = df_marche['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_marche,False,True)
         convert_boolean(df_marche)
     df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True)
@@ -296,6 +298,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         else:
             df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\n', '\\n', regex=False)
             df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\r', '\\r', regex=False)
+            df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_marche_badlines,True,True)
         convert_boolean(df_marche_badlines)
     df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-exclu-{data_format}.csv'), index=False,  header=True)
@@ -309,6 +312,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
         else:
             df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\n', '\\n', regex=False)
             df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\r', '\\r', regex=False)
+            df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_concession_badlines,True,False)
         convert_boolean(df_concession_badlines)
     df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-exclu-{data_format}.csv'), index=False,  header=True)
