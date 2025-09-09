@@ -415,6 +415,16 @@ class GlobalProcess:
             if dico_file=={}:
                 self.file_dump(file_path,dico)
             else:
+                if 'marches' in dico_file:
+                    keys_to_backup = ['offresRecues','marcheInnovant','attributionAvance','sousTraitanceDeclaree','dureeMois','variationPrix']
+                    for el in dico_file['marches']:
+                        for key in keys_to_backup:
+                            if key in el:
+                                el[f'backup__{key}'] = el[key]
+                        
+                        #self.simple_backup_colonne_inside(self.df,'dureeMois','actesSousTraitance','acteSousTraitance')
+                        #self.simple_backup_colonne_inside(self.df,'variationPrix','actesSousTraitance','acteSousTraitance')
+
                 dico_global = dico['marches'] + dico_file['marches']
                 #On transforme les dictionnaires en dataframes pour les dédoublonner
                 df_global = pd.DataFrame.from_dict(dico_global)
