@@ -56,6 +56,7 @@ class SourceProcess:
             self.metadata = json.load(f)
         self.source = self.metadata[self.key]["code"]
         self.format = self.metadata[self.key]["format"]
+        self.encoding = self.metadata[self.key]['encoding'] if 'encoding' in self.metadata[self.key] else 'utf-8'
         self.url_source = self.metadata[self.key]["url_source"]
         self.date_pattern = re.compile(r'\d{4}-\d{2}-\d{2}')
         self.date_pattern_year = re.compile(r'-20\d{2}.')
@@ -69,14 +70,14 @@ class SourceProcess:
         self._clean_metadata_folder()
 
         # Récupération des urls
-        self._url_init() 
+        #self._url_init() 
 
         # Liste des dictionnaires pour l'étape de nettoyage
         self.dico_2022_marche = []
         self.dico_2022_concession = []
 
         # Chargement du schemas json
-        scheme_path = 'schemes/schema_decp_v2.0.3.json'
+        scheme_path = 'schemes/schema_decp_v2.0.4.json'
         with open(scheme_path, "r",encoding='utf-8') as json_file:
             self.json_scheme = json.load(json_file)
             json_file.close
@@ -96,7 +97,7 @@ class SourceProcess:
         """_url_init permet la récupération de l'ensemble des url des fichiers qui doivent être
         téléchargés pour une source. Ces urls sont conservés dans self.metadata."""
 
-        logging.info("Initialisation")
+        logging.info("Initialisation des urls")
         os.makedirs(f"metadata/{self.source}", exist_ok=True) 
         os.makedirs(f"old_metadata/{self.source}", exist_ok=True)
         self.cle_api = self.metadata[self.key]["cle_api"]
@@ -170,7 +171,8 @@ class SourceProcess:
             if old_ressources==[]:
                 url = url + [d["url"] for d in ressources if
                             (d["url"].endswith("xml") or d["url"].endswith("json"))]
-                title = title + [prefix+d["title"] for d in ressources]
+                title = title + [prefix+d["title"] for d in ressources if
+                            (d["url"].endswith("xml") or d["url"].endswith("json"))]
             else: 
                 url, title = self.check_date_file(url,title, ressources, old_ressources,prefix)
             
@@ -200,13 +202,37 @@ class SourceProcess:
                             filtered_url.append(u)
                             filtered_title.append(t)
                     else:
-                        if "-2024" in t or "-2025" in t:
+                        if  "-2024" in t or t == 'PPSMJ 1.xml':
                             # Date not found in url, we keep the file for further analysis
                             filtered_url.append(u)
                             filtered_title.append(t)
             url = filtered_url
             title = filtered_title
             """
+
+            """
+            # Fichier 2024
+            filtered_url = []
+            filtered_title = []
+            for u, t in zip(url, title):
+                if '2024' in t or (t == 'PPSMJ 1.xml'): 
+                    filtered_url.append(u)
+                    filtered_title.append(t)
+            url = filtered_url
+            title = filtered_title
+            """
+            
+            # Fichiers 2025
+            filtered_url = []
+            filtered_title = []
+            for u, t in zip(url, title):
+                if '2025' in t and not '2024' in t: 
+                    filtered_url.append(u)
+                    filtered_title.append(t)
+            url = filtered_url
+            title = filtered_title
+            
+            
 
             #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
             if os.path.exists(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json"):
@@ -253,6 +279,7 @@ class SourceProcess:
         la récupération de l'ensemble des fichiers présents sur chaque url.
         """
         logging.info("--- ÉTAPE GET")
+        self._url_init()
         logging.info(f"Début du téléchargement : {len(self.url)} fichier(s)")
         os.makedirs(f"sources/{self.source}", exist_ok=True)
         if self.cle_api==[]:
@@ -268,7 +295,9 @@ class SourceProcess:
                         os.remove(f"sources/{self.source}/{self.title[i]}")
                         logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
                     #wget.download(self.url[i], f"sources/{self.source}/{self.title[i]}")
+                    #if not os.path.exists(f"sources/{self.source}/{self.title[i]}"):
                     dl.start(url=self.url[i],file_path=f"sources/{self.source}/{self.title[i]}",retries=10,display=False)
+                    #    logging.info(f"Fichier : {self.title[i]} telechargé ")
                 except:
                     logging.error(f"Problème de téléchargement du fichier {self.url[i]}")
         logging.info(f"Téléchargement : {len(self.url)} fichier(s) OK")
@@ -339,7 +368,7 @@ class SourceProcess:
         for i in range(len(self.title)):            
             if self.format == 'xml':
                 try:
-                    with open(f"sources/{self.source}/{self.title[i]}", encoding='utf-8') as xml_file:
+                    with open(f"sources/{self.source}/{self.title[i]}", encoding=self.encoding if self.encoding else 'utf-8') as xml_file:
                         dico = xmltodict.parse(xml_file.read(), dict_constructor=dict, \
                             force_list=('marche','contrat-concession',
                                 'titulaires','donneesExecution','modifications',
@@ -462,7 +491,9 @@ class SourceProcess:
             return rec
 
         # Get year-month suffix for this data set for merging data in export
-        year_month = self._get_year_month(file_name)
+        year_month = None #self._get_year_month(file_name)
+        #if self.source == 'marches-publics_aws':
+        #    year_month = None
 
         nb_total_marches,nb_total_concessions = self.get_nb_enregistrements(dico);
 

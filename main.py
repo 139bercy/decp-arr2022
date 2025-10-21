@@ -9,6 +9,7 @@ import augmente.nettoyage
 import augmente.utils
 import argparse
 import os
+import traceback
 
 
 args = augmente.utils.parse_args()
@@ -35,11 +36,11 @@ def main(report,data_format:str = "2022"):
     #gp.drop_by_date_2024()
     gp.drop_duplicate()
     gp.report.fix_statistics('merged')
-    gp.export(args.local)
+    suffixes = gp.export(args.local)
     gp.save_report()
     if not args.local:
         # gp.upload_s3()
-        gp.upload_on_datagouv()
+        gp.upload_on_datagouv(suffixes)
 
 
 def main_augmente(data_format:str = '2022'):
@@ -50,7 +51,7 @@ def main_augmente(data_format:str = '2022'):
 
     logger.info(f"Application règles métier format {data_format}")
     augmente.nettoyage.main(data_format)
-    
+
     # Partie désactivé logger.info("Enrichissement des données")
     # enrichissement2.main()
     # logger.info("csv enrichi dans le dossier data")
@@ -74,6 +75,7 @@ if __name__ == "__main__":
 
     # Obtenir le logger root
     logger = logging.getLogger()
+    logger.handlers.clear()
     logger.setLevel(logging.INFO)
 
     # Ajouter les handlers au logger root
@@ -108,7 +110,7 @@ if __name__ == "__main__":
         step.reset()
     else:
         logging.info("Using previous execution history to continue processing")
-        
+
     all_data_format = ['2022']
     for data_format in all_data_format:
         logging.info( "---------------------------------------------------------------")
@@ -124,9 +126,19 @@ if __name__ == "__main__":
             step.reset()
             report.db_end_session('OK')
         except Exception as err:
-            report.db_end_session('KO ')
-            logging.error(f"Une erreur est survenue lors du traitement pour le format {data_format} - {err}")
-        
+            tb = traceback.format_exc()
+            er = err
+        else:
+            tb = None
+            er = None
+        finally:
+            if not er is None:
+                report.save_report()
+                report.save_statistics()
+                report.db_end_session('KO ')
+                logging.error(f"Une erreur est survenue lors du traitement pour le format {data_format} - {er}")
+                logging.error(tb)
+
         logging.info(f"Traitement pour le format {data_format} terminé")
     
     logging.info("---------------------------------------------------------------")

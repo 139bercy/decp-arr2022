@@ -22,12 +22,13 @@ from stdnum.util import clean
 from reporting.Report import Report
 
 
-PATTERN_DATE = r'^20[0-9]{2}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}$'
+PATTERN_DATE = r'^20[1-2]{1}[0-9]{1}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}$'
 light_errors = []
 
 
 logger = logging.getLogger("main.nettoyage2")
-logger.setLevel(logging.DEBUG)
+logger.handlers.clear()
+logger.setLevel(logging.INFO)
 pd.options.mode.chained_assignment = None  # default='warn'
 
 report = Report('augmente')
@@ -92,16 +93,21 @@ def restore_nc(df,field):
 # Fonction pour remplacer les valeurs
 def modifier_source(valeur):
     if valeur == 'data.gouv.fr_pes':
-        return 'DGFIP – PES marche'
+        return 'DGFIP – PES MARCHE'
     elif valeur == 'marches-publics_aws':
         return 'AWS'
     elif valeur == 'e-marchespublics':
-        return 'Dematis'
+        return 'DEMATIS'
     elif valeur == 'xmarches':
         return 'SPL-XDEMAT'
     elif valeur == 'ppsmj':
         return 'Region Ile-de-France'
+    elif valeur == 'data.gouv.fr_modula':
+        return 'MODULA DEMAT'
+    elif valeur == 'data.gouv.fr_atexo':
+        return 'ATEXO'
     return valeur  # Renvoie la valeur d'origine si aucune correspondance n'est trouvée
+
 
 @compute_execution_time
 def manage_data_quality(df: pd.DataFrame,data_format:str):
@@ -273,7 +279,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_concession['objet'] = df_concession['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_concession,False,False)
         convert_boolean(df_concession)
-    df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True)
+        df_concession.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-{data_format}.csv'), index=False, header=True)
     
     if not df_marche.empty:
         if 'source' in df_marche.columns:
@@ -287,7 +293,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_marche['objet'] = df_marche['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_marche,False,True)
         convert_boolean(df_marche)
-    df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True)
+        df_marche.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-{data_format}.csv'), index=False, header=True)
     
     if not df_marche_badlines.empty:
         if 'source' in df_marche_badlines.columns:
@@ -301,7 +307,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_marche_badlines['objet'] = df_marche_badlines['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_marche_badlines,True,True)
         convert_boolean(df_marche_badlines)
-    df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-exclu-{data_format}.csv'), index=False,  header=True)
+        df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-marche-exclu-{data_format}.csv'), index=False,  header=True)
     
     if not df_concession_badlines.empty:
         if 'source' in df_concession_badlines.columns:
@@ -315,7 +321,7 @@ def manage_data_quality(df: pd.DataFrame,data_format:str):
             df_concession_badlines['objet'] = df_concession_badlines['objet'].str.replace('\x85', '\\r\\n', regex=False)
         convert_all_list_to_str(df_concession_badlines,True,False)
         convert_boolean(df_concession_badlines)
-    df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-exclu-{data_format}.csv'), index=False,  header=True)
+        df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data"], f'{date}-concession-exclu-{data_format}.csv'), index=False,  header=True)
 
     # Concaténation des dataframes pour l'enrigissement (re-séparation après)
     df = pd.concat([df_concession, df_marche])
@@ -832,8 +838,8 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
         """
 
         # vérification du format de la date de notification (AAAA-MM-JJ) et correction si besoin création d'un dataframe avec les lignes à corriger
-        format_regex = r'^20\d{2}-\d{2}-\d{2}$'
-        invalid_dates = df[~df[col].str.match(format_regex, na=False)]
+        format_regex = PATTERN_DATE
+        invalid_dates = df[~df[col].str.match(format_regex, na=False)] #if col!="dateNotification" else df[~(df[col].str.match(format_regex, na=False) or df["datePublicationDonnees"].str.match(format_regex, na=False)]
         if not invalid_dates.empty:
             if col== "dateNotification":
                 invalid_dates["dateNotification"] = invalid_dates["datePublicationDonnees"]
@@ -854,7 +860,28 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
                 df = df_add_error(df,mask_bad_col,f"Champ {col} erroné")
 
         return df
-    
+
+    def marche_date_valid_optional(df: pd.DataFrame, dfb: pd.DataFrame,data_format:str,col:str) -> pd.DataFrame:
+        """
+        Format AAAA-MM-JJ
+            Si MM<01 ou>12,
+            SI JJ<01 ou >31 (voir si possibilité de vérifier le format jour max en fonction du mois et année)
+        La date de notification est INEXPLOITABLE si elle ne respecte pas le format, ou si elle ne peut pas être retransformée au format initial (ex : JJ-MM-AAAA)
+        Correction si INEXPLOITABLE :3abb5676-c994-4e70-9713-0f5faf7c8e4c
+            Si la date de notification du marché est manquante et qu’il existe une date de publication des données essentielles du marché public
+            respectant le format AAAA-MM-JJ (ou pouvant être retransformé en ce format) alors il convient d’affecter la date de publication à la date de notification.
+        """
+
+        # vérification du format de la date de notification (AAAA-MM-JJ) et correction si besoin création d'un dataframe avec les lignes à corriger
+        format_regex = PATTERN_DATE
+        invalid_dates = df[~df[col].str.match(format_regex, na=True) & df[col].notna() & (df[col] != '')] #if col!="dateNotification" else df[~(df[col].str.match(format_regex, na=False) or df["datePublicationDonnees"].str.match(format_regex, na=False)]
+        if not invalid_dates.empty:
+            mask_bad_col = ~df[col].str.match(format_regex, na=True) & df[col].notna() & (df[col] != '')
+
+            df = df_add_error(df,mask_bad_col,f"Champ {col} erroné")
+
+        return df
+
     feature_doublons_marche = ["id", "acheteur.id", "titulaire_id_1", "montant", "dateNotification"] 
 
     df_marche_ = dedoublonnage_marche(df_marche_,feature_doublons_marche)
@@ -900,6 +927,15 @@ def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
     df_marche_ = check_duree_contrat(df_marche_, df_marche_badlines_, 180)
     df_marche_ = marche_date_valid(df_marche_, df_marche_badlines_, data_format, "dateNotification")
     df_marche_ = marche_date_valid(df_marche_, df_marche_badlines_, data_format, "datePublicationDonnees")
+    if 'dateNotificationModificationSousTraitanceModificationActeSousTraitance' in df_marche_.columns:
+        df_marche_ = marche_date_valid_optional(df_marche_, df_marche_badlines_, data_format, "dateNotificationModificationSousTraitanceModificationActeSousTraitance") # On ne veux plus générer d'erreur sur data.eco
+    if 'dateNotificationSousTraitanceActeSousTraitance' in df_marche_.columns:
+        df_marche_ = marche_date_valid_optional(df_marche_, df_marche_badlines_, data_format, "dateNotificationModificationSousTraitanceModificationActeSousTraitance") # On ne veux plus générer d'erreur sur data.eco
+    if 'dateNotificationModificationModification' in df_marche_.columns:
+        df_marche_ = marche_date_valid_optional(df_marche_, df_marche_badlines_, data_format, "dateNotificationModificationModification") # On ne veux plus générer d'erreur sur data.eco
+    if 'dateNotificationActeSousTraitance' in df_marche_.columns:
+        df_marche_ = marche_date_valid_optional(df_marche_, df_marche_badlines_, data_format, "dateNotificationActeSousTraitance") # On ne veux plus générer d'erreur sur data.eco
+
 
     df_marche_ = check_id_format(df_marche_, df_marche_badlines_)
 
@@ -1427,9 +1463,9 @@ def _add_mq_to_empty_field(value,mark:str):
     if isinstance(value,list) and not value:
         value = [mark]
     elif not isinstance(value,list) and pd.isna(value):
-        value = mark + " <NA>"
+        value = mark #+ " <NA>"
     elif not isinstance(value,list) and (value == np.nan):
-        value = mark + " nan"
+        value = mark #+ " nan"
     elif not isinstance(value,list) and (value =='nan' or value == 'NC' or value == ''):
         value = mark +' '+ value
     return value
@@ -1727,7 +1763,7 @@ def marche_mark_fields(df: pd.DataFrame) -> pd.DataFrame:
     #df = mark_bad_format_field(df,"lieuExecution.code",r'^[A-Za-z0-9]{1,6}$')
     df = mark_bad_format_field(df,"lieuExecution.typeCode",r'^(Code postal|Code commune|Code arrondissement|Code canton|Code département|Code région|Code pays)$')
     df = mark_bad_format_int_field(df,"dureeMois")
-    df = mark_bad_format_field(df,"dateNotification",PATTERN_DATE)  
+    #df = mark_bad_format_field(df,"dateNotification",PATTERN_DATE)  
     df = mark_bad_format_multi_field(df,"considerationsSociales",r'^(Clause sociale|Critère social|Marché réservé|Pas de considération sociale)$')
     df = mark_bad_format_multi_field(df,"considerationsEnvironnementales",r'^(Clause environnementale|Critère environnemental|Pas de considération environnementale)$')
     df = mark_bad_format_field(df,"marcheInnovant",r'^(True|False|0|1|oui|non)$')
