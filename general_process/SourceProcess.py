@@ -221,7 +221,7 @@ class SourceProcess:
             url = filtered_url
             title = filtered_title
             """
-            
+            """
             # Fichiers 2025
             filtered_url = []
             filtered_title = []
@@ -231,7 +231,7 @@ class SourceProcess:
                     filtered_title.append(t)
             url = filtered_url
             title = filtered_title
-            
+            """
             
 
             #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
