@@ -1,3 +1,4 @@
+from database.DbDecp import DbDecp
 import pandas as pd
 import numpy as np
 import ast
@@ -20,6 +21,7 @@ from reporting.Report import Report
 from utils.NodeFormat import NodeFormat
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
+from utils.UtilsJson import UtilsJson
 
 with open(os.path.join("confs", "var_glob.json")) as f:
     conf_glob = json.load(f)
@@ -34,9 +36,16 @@ class GlobalProcess:
     fusion des sources dans un seul DataFrame (merge_all), suppression des doublons (drop_duplicate)
     et l'exportation des données en json pour publication (export)."""
 
-    columns_with_list = ['titulaires','donneesExecution','modifications','concessionnaires','tarifs']
+    GLOBAL_RESULT_PATH = "results/decp-global.json"
+
     date_pattern = r'\d{4}-\d{2}-\d{2}'
     date_pattern_inv = r'\d{2}.\d{2}.\d{4}'
+
+    #Critères de dédoublonnage
+    feature_doublons_marche = ["id", "acheteur", "titulaires", "dateNotification", "montant"] 
+    feature_doublons_concession = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale"]
+    feature_doublons_marche_order = ["id", "acheteur", "titulaires", "dateNotification", "montant",'tmp__max_date'] 
+    feature_doublons_concession_order = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale",'tmp__max_date']
 
     def __init__(self,data_format="2022", report:Report=None):
         """L'étape __init__ crée les variables associées à la classe GlobalProcess : le DataFrame et
@@ -53,11 +62,19 @@ class GlobalProcess:
         logging.info("--- ÉTAPE MERGE ALL")
         logging.info("Début de l'étape Merge des Dataframes")
         if len(self.dataframes)>0:
-            self.df = pd.concat(self.dataframes, ignore_index=True)
+            self.df = pd.concat(self.dataframes, ignore_index=True, copy=True)
             self.df = self.df.reset_index(drop=True)
             logging.info("Merge OK")
+            del self.dataframes
         else:
             logging.info("Aucune données à traiter")
+        
+        #print(self.df['tmp__max_date'].apply(lambda x: type(x)).value_counts())
+        #mask = self.df['tmp__max_date'].apply(lambda x: isinstance(x, (tuple, list)))
+        #print(self.df.loc[mask, ['tmp__max_date']].head(10))
+        #mask2 = df['tmp__max_date'].apply(lambda x: isinstance(x, str))
+        #print(self.df.loc[mask2, ['tmp__max_date']].head(10))
+        
         logging.info(f"Nombre de marchés dans le DataFrame fusionné après merge : {len(self.df)}")
 
     @StepMngmt().decorator(Step.FIX_ALL,StepMngmt.FORMAT_DATAFRAME)
@@ -178,147 +195,51 @@ class GlobalProcess:
         # Séparation des lignes selon la colonne "modifications"
         logging.info("Début de l'étape Suppression des doublons")
 
-        if 'source' in self.df.columns:
-            self.df.sort_values(by="source", inplace=True) 
-        else : 
-            self.df['source'] = pd.NA
-        self.df = self.dedoublonnage(self.df,True)
+        #if 'source' in self.df.columns:
+        #    self.df.sort_values(by="source", inplace=True) 
+        #else : 
+        #    self.df['source'] = pd.NA
+        self.dedoublonnage(self.df,True)
         logging.info("Suppression OK")
         logging.info(f"Nombre de marchés dans Df après suppression des doublons sur les nouvelles données : {len(self.df)}")
 
-    def dedoublonnage(self,df: pd.DataFrame,add_report=True) -> pd.DataFrame:
+    def dedoublonnage(self,df: pd.DataFrame, add_report=True) -> pd.DataFrame:
         nb_duplicated_marches = 0
         nb_duplicated_concessions = 0
-
-        #Critères de dédoublonnage
-        feature_doublons_marche = ["id", "acheteur", "titulaires", "dateNotification", "montant"] 
-        feature_doublons_marche_order = ["id", "acheteur", "titulaires", "dateNotification", "montant",'tmp__dateModification','tmp__idModification'] 
-        feature_doublons_concession = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale"]
-        feature_doublons_concession_order = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale",'tmp__dateModification','tmp__idModification']
-
-        #Séparation des marches et des concessions, suppression des doublons
-        df_marche = df[df['_type'].str.contains("Marché")]
-        if not df_marche.empty:
-            df_marche = df_marche.astype(str)
-            df_marche = df_marche.sort_values(
-                feature_doublons_marche_order,
-                ascending=[True, True, True, True, True, True, True]
-            )
-            index_to_keep = df_marche.drop_duplicates(subset=feature_doublons_marche, keep='last').index.tolist()
-        else:
-            index_to_keep = []
-            
-        # Mémoriser la nombre de marchés en double
-        nb_duplicated_marches = len(df_marche)-len(index_to_keep)
-        if add_report:
-            self.report.nb_duplicated_marches += nb_duplicated_marches
-
-        df_concession = df[~df['_type'].str.contains("Marché")]
-        if not df_concession.empty:
-            df_concession = df_concession.astype(str)
-            df_concession = df_concession.sort_values(
-                feature_doublons_concession_order,
-                ascending=[True, True, True, True, True, True, True]
-            )
-            index_to_keep += df_concession.drop_duplicates(subset=feature_doublons_concession, keep='last').index.tolist()
-
-        # Mémoriser la nombre de concessions après dédoublonnage
-        nb_duplicated_concessions = len(df_concession) - ( len(index_to_keep) - (len(df_marche) - nb_duplicated_marches) )
-        if add_report:
-            self.report.nb_duplicated_concessions += nb_duplicated_concessions
-
-        if add_report:
-            # Ajouter au reporting les doublons supprimés
-            self.report.add('FixAll/Marchés',self.report.D_DUPLICATE,'Marchés en doublon',df_marche[df_marche.duplicated(feature_doublons_marche)])
-            self.report.add('FixAll/Concessions',self.report.D_DUPLICATE,'Concessions en doublon',df_concession[df_concession.duplicated(feature_doublons_concession)])
-
-        df = df.loc[index_to_keep, :]
-        df = df.reset_index(drop=True)
         
-        logging.info(f"Dedoublonnage {nb_duplicated_marches + nb_duplicated_concessions} lignes supprimées")
+        #TODO type
+        #df['dureeMois'] = pd.to_numeric(df['dureeMois'].astype(str).str.replace(',', '.', regex=False),
+        #                        errors='coerce').astype('Int64')
+        #print(df['tmp__max_date'].apply(lambda x: type(x)).value_counts())
+        #mask = df['tmp__max_date'].apply(lambda x: isinstance(x, (tuple, list)))
+        #print(df.loc[mask, ['tmp__max_date']].head(10))
+
+        df.sort_values(
+            by=['tmp__max_date'],
+            ascending=[False],  # max_date décroissant -> conserve la plus récente
+            inplace=True,
+            kind='mergesort'  # tri stable
+        )
+        
+        mask = df['_type'].eq('Marché')
+        to_drop = df.loc[mask, self.feature_doublons_marche].astype(str).duplicated(keep='last')
+        nb_duplicated_marches = df.loc[mask, self.feature_doublons_marche].astype(str).duplicated(keep='last').sum()
+        df.drop(index=to_drop[to_drop].index, inplace=True)
+        df.reset_index(drop=True, inplace=True)
+
+        logging.info(f"Nombre de marché en doublon {nb_duplicated_marches}")
+
+        mask = df['_type'].ne('Marché')
+        to_drop = df.loc[mask, self.feature_doublons_concession].astype(str).duplicated(keep='last')
+        nb_duplicated_concessions = df.loc[mask, self.feature_doublons_concession].astype(str).duplicated(keep='last').sum()
+        df.drop(index=to_drop[to_drop].index, inplace=True)
+        df.reset_index(drop=True, inplace=True)
+
+        logging.info(f"Nombre de concession en doublon {nb_duplicated_concessions}")
+        logging.info(f"Nombre de marchés / concession après dédoublonnage: {len(df)}")
+            
         return df
 
-    def dedoublonnage_OLD(self,df: pd.DataFrame,add_report=True) -> pd.DataFrame:
-        nb_duplicated_marches = 0
-        nb_duplicated_concessions = 0
-
-        # On complete la colonne backup montant pour les marches ajoutés depuisl'export qui ne sont pas passé par fix
-        if "montant" in self.df.columns and 'backup__montant' in self.df.columns \
-            and df.loc[df['_type'] == 'Marché', 'backup__montant'].isna().any():
-            df.loc[(df['backup__montant'].isna()) & (df['_type'] == 'Marché'), 'backup__montant'] = df['montant']
-            df.loc[df['_type'] == 'Marché', 'montant'] = df.loc[df['_type'] == 'Marché', 'montant'].apply(lambda x: int(x) if pd.notna(x) else np.nan)
-
-        if "modifications" in df.columns: # Règles de dédoublonnages diffèrentes. On part du principe qu'en cas 
-            # de modifications, la colonne "modifications" est créée ou modifiée
-            df_modif = df[df.modifications.apply(lambda x: 0 if x == '' or
-                                                        str(x) in ['nan', 'None'] else len(x))>0]     #lignes avec modifs     
-            df_nomodif = df[df.modifications.apply(lambda x: 0 if x == '' or
-                                                        str(x) in ['nan', 'None'] else len(x))==0]  #lignes sans aucune modif
-        else:
-            df_modif = pd.DataFrame() 
-            df_nomodif = df
-
-        #Critères de dédoublonnage
-        feature_doublons_marche = ["id", "acheteur", "titulaires", "dateNotification", "montant"] 
-        feature_doublons_concession = [ "id", "autoriteConcedante", "concessionnaires", "dateDebutExecution", "valeurGlobale"]
-
-        #Séparation des marches et des concessions, suppression des doublons
-        df_nomodif_str = df_nomodif.astype(str)
-        df_nomodif_marche = df_nomodif_str[df_nomodif_str['_type'].str.contains("Marché")]
-        index_to_keep_nomodif = df_nomodif_marche.drop_duplicates(subset=feature_doublons_marche).index.tolist()
-
-        # Mémoriser la nombre de marchés en double
-        nb_duplicated_marches_no_modif = len(df_nomodif_marche)-len(index_to_keep_nomodif)
-        if add_report:
-            self.report.nb_duplicated_marches += nb_duplicated_marches_no_modif
-
-        df_nomodif_concession = df_nomodif_str[~df_nomodif_str['_type'].str.contains("Marché")]
-        index_to_keep_nomodif += df_nomodif_concession.drop_duplicates(subset=feature_doublons_concession).index.tolist()
-
-        # Mémoriser la nombre de concessions après dédoublonnage
-        nb_duplicated_concessions_no_modif = len(df_nomodif_concession) - ( len(index_to_keep_nomodif) - (len(df_nomodif_marche) - nb_duplicated_marches_no_modif) )
-        if add_report:
-            self.report.nb_duplicated_concessions += nb_duplicated_concessions_no_modif
-
-        if add_report:
-            # Ajouter au reporting les doublons supprimés
-            self.report.add('FixAll/Marchés',self.report.D_DUPLICATE,'Marchés en doublon',df_nomodif_marche[df_nomodif_marche.duplicated(feature_doublons_marche)])
-            self.report.add('FixAll/Concessions',self.report.D_DUPLICATE,'Concessions en doublon',df_nomodif_concession[df_nomodif_concession.duplicated(feature_doublons_concession)])
-
-        #Séparation des marches et des concessions, tri selon la date et suppression ses doublons
-        if not df_modif.empty:
-            df_modif_str  = df_modif.astype(str)     #en str pour réaliser le dédoublonnage
-            df_modif_str.sort_values(by=["datePublicationDonnees"], inplace=True)   #Tri
-            
-            df_modif_marche = df_modif_str[df_modif_str['_type'].str.contains("Marché")]
-            index_to_keep_modif = df_modif_marche.drop_duplicates(subset=feature_doublons_marche,keep='last').index.tolist()  #'last', permet de garder la ligne avec la date est la plus récente
-
-            # Mémoriser la nombre de marchés après dédoublonnage
-            nb_duplicated_marches = len(df_modif_marche)-len(index_to_keep_modif)
-            if add_report:
-                self.report.nb_duplicated_marches += nb_duplicated_marches
-
-            df_modif_concession = df_modif_str[~df_modif_str['_type'].str.contains("Marché")]
-            index_to_keep_modif += df_modif_concession.drop_duplicates(subset=feature_doublons_concession,keep='last').index.tolist()  #on ne garde que que les indexs pour récupérer les lignes qui sont dans df_modif (dont le type est dict)
-
-            # Mémoriser la nombre de concessions après dédoublonnage
-            nb_duplicated_concessions = len(df_modif_concession) - ( len(index_to_keep_modif) - ( len(df_modif_marche) - nb_duplicated_marches ) )
-            if add_report:
-                self.report.nb_duplicated_concessions += nb_duplicated_concessions
-
-            if add_report:
-                # Ajouter au reporting les doublons supprimés
-                self.report.add('FixAll/Merchés',self.report.D_DUPLICATE,'Marchés en doublon',df_nomodif_marche[df_nomodif_marche.duplicated(feature_doublons_marche)])
-                self.report.add('FixAll/Concessions',self.report.D_DUPLICATE,'Concessions en doublon',df_nomodif_concession[df_nomodif_concession.duplicated(feature_doublons_concession)])
-
-            df = pd.concat([df_nomodif.loc[index_to_keep_nomodif, :], df_modif.loc[index_to_keep_modif, :]])
-
-        else:
-            df = df_nomodif.loc[index_to_keep_nomodif, :]
-        df = df.reset_index(drop=True)
-        
-        logging.info(f"Dedoublonnage {nb_duplicated_marches_no_modif + nb_duplicated_concessions_no_modif + nb_duplicated_marches + nb_duplicated_concessions} lignes supprimées")
-        return df
 
     def extract_publication_dates(self, modifications_node) -> list:
         # Pour test sur chaine de caractere modification_list = ast.literal_eval(modification_str)  # Évalue la chaîne comme une structure de données
@@ -379,7 +300,8 @@ class GlobalProcess:
                 df['datePublicationDonnees'] = df['datePublicationDonnees'].astype(str) 
 
         if not df_marches.empty:
-            df_marches['titulaires'] = df_marches['titulaires'].apply(_tri_titulaires)
+            if 'titulaires' in df_marches.columns:
+                df_marches['titulaires'] = df_marches['titulaires'].apply(_tri_titulaires)
             if process_dates:
                 _prepare_group_by(df_marches) # df_marches)
             if "tmp__dateModification" not in df_marches.columns:
@@ -409,7 +331,10 @@ class GlobalProcess:
         if os.path.exists(file_path):
             dico_file = self.file_load(file_path)
             if dico_file=={}:
-                self.file_dump(file_path,{'marches': df_new.to_dict(orient='records')})
+                df_new = self.dedoublonnage(df_new)
+                dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
+                    for m in df_new.to_dict(orient='records')]}
+                self.file_dump(file_path,dico)
             else:
                 dico_global = dico_file['marches']
                 #On transforme le dictionnaires en dataframes pour dédoublonner les nouvelles données
@@ -434,12 +359,16 @@ class GlobalProcess:
 
                 df_global = self.dedoublonnage(df_global)
                 
-                dico_final = {'marches': df_global.to_dict(orient='records')}
-
+                dico_final = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
+                    for m in df_global.to_dict(orient='records')]}
+                
                 self.file_dump(file_path,dico_final)                
         else:
             # Le fichier n'existait pas on ajoute le nouveau dictionnaire dedans
-            self.file_dump(file_path,{'marches': df_new.to_dict(orient='records')})
+            df_new = self.dedoublonnage(df_new)
+            dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
+                for m in df_new.to_dict(orient='records')]}
+            self.file_dump(file_path,dico)
     
     def _make_copy_for_data_gouv(self,suffix):
         file_path = f"results/decp-{suffix}.json"
@@ -453,9 +382,9 @@ class GlobalProcess:
                         if key in el:
                             el[f'backup__{key}'] = el[key]
 
-        dico = self._dico_purge(dico)
-        with open(file_path_copy, 'w', encoding="utf-8") as f:
-            json.dump(dico, f, indent=2, ensure_ascii=False)
+            dico = self._dico_purge(dico)
+            with open(file_path_copy, 'w', encoding="utf-8") as f:
+                json.dump(dico, f, indent=2, ensure_ascii=False)
 
     def upload_on_datagouv(self, suffixes):
         logging.info(f"Uploading file ...")
@@ -474,24 +403,32 @@ class GlobalProcess:
         }
         years = []
 
-        for suffix_month in suffixes:
-            logging.info(f"Uploading file decp-{suffix_month}_data_gouv.json")
-            if(not os.path.exists(f'results/decp-{suffix_month}_data_gouv.json')):
-                self._make_copy_for_data_gouv(suffix_month)
-            resource_id_month = self._get_ressource_id(headers,api,dataset_id,suffix_month)
-            resource_id_month = self._upload_file(headers,api,dataset_id,resource_id_month,suffix_month)
-            suffix_year = suffix_month[0:4]
-            if not suffix_year in years:
-                years += [suffix_year]
+        if not suffixes[0] == "global":
 
-        for suffix_year in years:
-            file_path = f'results/decp-{suffix_year}_data_gouv.json'
+            for suffix_month in suffixes:
+                logging.info(f"Uploading file decp-{suffix_month}_data_gouv.json")
+                if(not os.path.exists(f'results/decp-{suffix_month}_data_gouv.json')):
+                    self._make_copy_for_data_gouv(suffix_month)
+                resource_id_month = self._get_ressource_id(headers,api,dataset_id,suffix_month)
+                resource_id_month = self._upload_file(headers,api,dataset_id,resource_id_month,suffix_month)
+                suffix_year = suffix_month[0:4]
+                if not suffix_year in years:
+                    years += [suffix_year]
+
+            for suffix_year in years:
+                file_path = f'results/decp-{suffix_year}_data_gouv.json'
+                logging.info(f"Uploading file {file_path}")
+                if(not os.path.exists(file_path)):
+                    self._make_copy_for_data_gouv(suffix_year)
+                resource_id_year = self._get_ressource_id(headers,api,dataset_id,suffix_year)
+                resource_id_year = self._upload_file(headers,api,dataset_id,resource_id_year,suffix_year)
+        else:
+            suffix = "global"
+            file_path = f'results/global/decp-{suffix}.json'
             logging.info(f"Uploading file {file_path}")
-            if(not os.path.exists(file_path)):
-                self._make_copy_for_data_gouv(suffix_year)
-            resource_id_year = self._get_ressource_id(headers,api,dataset_id,suffix_year)
-            resource_id_year = self._upload_file(headers,api,dataset_id,resource_id_year,suffix_year)
-        
+            resource_id = self._get_ressource_id(headers,api,dataset_id,suffix)
+            resource_id = self._upload_file(headers,api,dataset_id,resource_id,suffix)
+             
         current_month = int(self.get_current_date().strftime('%m'))
         current_year = int(self.get_current_date().strftime('%Y'))
         if not current_month == month_previous_update:
@@ -505,7 +442,7 @@ class GlobalProcess:
                 json.dump(config, file, indent=4)
 
     @StepMngmt().decorator(Step.EXPORT,None)
-    def export(self,local:bool):
+    def generate_export(self,local:bool):
         # if df is empty then return
         if len(self.df) == 0:
             logging.warning("Le DataFrame global est vide, impossible d'exporter")
@@ -516,21 +453,23 @@ class GlobalProcess:
 
         # Creation du sous répertoire "results"
         os.makedirs("results", exist_ok=True)
+        
+        # Sauvegarde des données journalières
+        # daily replaced by global
+        #path_result_daily = "results/decp-daily.json"
+        #self.file_dump(path_result_daily,dico)
 
         ## Exportation des données dans des fichiers mensuels 
-        self._nan_correction_dico(self.df)
-
         current_year_month  = f"{datetime.now().year}-{datetime.now().month:02d}"
-        suffixes = []
         years = []
         for year_month, group in self.df.groupby('tmp__annee_mois'):
             if year_month <= current_year_month:
-                suffixes += [year_month]
+                output_file = f"results/decp-{year_month}.json"
+
                 nb_marches = group[group['_type'].str.contains("Marché")].shape[0]
                 nb_concessions = group[~group['_type'].str.contains("Marché")].shape[0]
-                
-                output_file = f"results/decp-{year_month}.json"
                 logging.info(f"Ajout de {nb_marches} marchés et {nb_concessions} concessions au fichier {output_file}")
+                
                 self._merge_in_file(output_file,group)
                 
                 suffix_year = year_month[0:4]
@@ -538,6 +477,7 @@ class GlobalProcess:
                     years += [suffix_year]
 
         for year in years:
+            output_file_year = f"results/decp-{year}.json"
             df_new = pd.DataFrame()
             total_marches = 0
             total_concessions = 0
@@ -547,24 +487,60 @@ class GlobalProcess:
                     
                     total_marches += group[group['_type'].str.contains("Marché")].shape[0]
                     total_concessions += group[~group['_type'].str.contains("Marché")].shape[0]
-                    
-            output_file_year = f"results/decp-{year}.json"
+                
             logging.info(f"Ajout de {total_marches} marchés et {total_concessions} concessions au fichier {output_file_year} pour l'annee {year}")
             self._merge_in_file(output_file_year,df_new)
 
+        logging.info("Exportation JSON OK")
+
+
+    def get_suffixes_exported_files(self):
+        suffixes = []
+        current_year_month = f"{datetime.now().year}-{datetime.now().month:02d}"
+        for year_month, group in self.df.groupby('tmp__annee_mois'):
+            if year_month <= current_year_month:
+                suffixes += [year_month]
+        return suffixes
+
+
+    @StepMngmt().decorator(Step.GLOBAL,None)
+    def update_global_data(self):
+        logging.info("Update data_out in database")
+        
+        self._nan_correction_dico(self.df)
 
         dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                             for m in self.df.to_dict(orient='records')]}
         
-        #Création du fichier daily
-        path_result_daily = "results/decp-daily.json"
-
-        # Sauvegarde des données journalières
-        self.file_dump(path_result_daily,dico)
-
-        logging.info("Exportation JSON OK")
-        return suffixes
-    
+        db = DbDecp()
+        if 'marches' in dico:
+            i=0
+            pairs_marches=[]
+            for marche in dico['marches']:
+                if not marche['db_id']==0:
+                    if marche["_type"]=='Marché':
+                        pairs_marches.append([int(marche['db_id']),marche])
+                        i+=1
+                        if i % 10000 == 0:
+                            logging.info("Updating 10000 records")
+                            db.bulk_update_marche(pairs_marches)
+                            pairs_marches = []
+                    else:
+                        db.update_concession(marche['db_id'],marche)
+            if not pairs_marches == []:
+                db.bulk_update_marche(pairs_marches)
+        logging.info("Data updated in database")
+        db.close()
+   
+    def generate_global(self):
+        logging.info("Launching file generation for augmente data treatment")
+        # Creation du sous répertoire "results"
+        os.makedirs("results", exist_ok=True)
+        os.makedirs("results/global", exist_ok=True)
+        db = DbDecp()
+        db.extract_json_to_file("results/global/decp-global.json")
+        db.close()
+        logging.info("File generation ok for augmente data treatment")
         
     def file_load(self,path:str) ->dict:
         """
@@ -681,12 +657,17 @@ class GlobalProcess:
             keys_to_delete = [clé for clé in marche.keys() if clé.startswith(prefix)]
             for key in keys_to_delete:
                 del marche[key]
-         
+        
+        utilsJson = UtilsJson()
+
         marches = []
         concessions = []
         for marche_in in dico_in['marches']:
-            marche = marche_in.copy()
+            marche = utilsJson.format_json(marche_in.copy(),False)
+            if 'db_id' in marche:
+                del marche["db_id"]
 
+            """
             delete_attributes_by_prefix(marche,'report__')
             delete_attributes_by_prefix(marche,'tmp__')
 
@@ -728,7 +709,8 @@ class GlobalProcess:
             self.force_bool_or_nc('marcheInnovant',marche)
             self.force_bool_or_nc('attributionAvance',marche)
             self.force_bool_or_nc('sousTraitanceDeclaree',marche)
-
+            """
+        
             if '_type' in marche and marche['_type'] != 'Marché':
                 if 'montant' in marche:
                     del marche["montant"]
@@ -912,6 +894,7 @@ class GlobalProcess:
             resource_id_global = self._upload_file(headers,api,dataset_id,resource_id_global,suffix_year)
 
             resource_id_month = self._upload_file(headers,api,dataset_id,None,suffix_month)
+            self._update_description(headers,api,dataset_id,resource_id_month,suffix_month)
             
             with open(config_file, "r") as file:
                 data = json.load(file)
@@ -936,6 +919,30 @@ class GlobalProcess:
                 config["resource_year"] = self.get_current_date().year
             with open(config_file, "w") as file:
                 json.dump(config, file, indent=4) 
+
+
+    def _update_description(self, headers, api, dataset_id, ressource_id, suffix):
+        mois_annee = self._get_mois_annee(suffix)
+        description = f"Fichier cumulatif des données essentielles de la commande publique pour {mois_annee}"
+        #description = "Fichier des données essentielles de la commande publique au format 2022 pour toutes les années après dédoublonnage"
+        data = {
+            "format": "json",
+            "title": f"decp-{suffix}.json",
+            "description": f"{description} ",
+            "type": "main",
+            "mime": "application/json",
+            "url": f"https://www.data.gouv.fr/api/1/datasets/r/{ressource_id}"
+        }
+        url_update = f"{api}/datasets/{dataset_id}/resources/{ressource_id}/"
+        response = requests.put(url_update, headers=headers, json=data)
+
+        logging.INFO(f"Statut de la requête : {response.status_code}")
+        logging.info("Réponse : ", response.json())
+
+    def _get_mois_annee(self,suffix):
+        year,month = suffix.split("-")
+        date_obj = datetime.datetime(int(year),int(month),1)
+        return date_obj.strftime("%B %Y")
 
     def _get_ressource_id(self,headers,api,dataset_id,suffix:str) -> str:
         resource_id = None
@@ -968,10 +975,14 @@ class GlobalProcess:
         else:
             url = f"{api}/datasets/{dataset_id}/resources/{resource_id}/upload/"
         
+        if suffix=="global":
+            file_path = f"results/global/decp-global.json"
+        else:
+            file_path = f"results/decp-{suffix}_data_gouv.json"
         try:
-            # On charge le fichier annuel existant
+            # On charge le fichier  existant
             file = {
-                "file": (f"decp-{suffix}.json", open(f"results/decp-{suffix}_data_gouv.json", "rb"))
+                "file": (f"decp-{suffix}.json", open(file_path, "rb"))
             }
         except Exception:
             file = {

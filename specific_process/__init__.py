@@ -13,8 +13,10 @@ from .MaxiProcess import MaxiProcess
 from .MegaProcess import MegaProcess
 from .Megalis2024Process import Megalis2024Process
 from .PesProcess import PesProcess
+from .Modula2024Process import Modula2024Process
 from .Pes2024Process import Pes2024Process
 from .Ppsmj2024Process import Ppsmj2024Process
 from .SampleXmlProcess import SampleXmlProcess
 from .SampleJsonProcess import SampleJsonProcess
 from .Xmarches2024Process import Xmarches2024Process
+from .Modulademat2024Process import Modulademat2024Process

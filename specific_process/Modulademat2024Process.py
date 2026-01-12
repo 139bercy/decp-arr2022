@@ -1,8 +1,8 @@
 from general_process.SourceProcess import ProcessParams, SourceProcess
 
-class Pes2024Process(SourceProcess):
+class Modulademat2024Process(SourceProcess):
     def __init__(self,params:ProcessParams):
-        super().__init__("pes_2024",params=params)
+        super().__init__("modula_2024",params=params)
 
     def _url_init(self):
         super()._url_init()
