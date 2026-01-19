@@ -11,31 +11,8 @@ class ProcessFactory:
 
     def __init__(self, process=None, data_format=None, report:Report=None):
         """Création de la liste des Processus qui correspondent chacun à une classe importée en début de document."""
-        #self.processes = [PesProcess, AwsProcess, AifeProcess, EmarProcess, LyonProcess, MegaProcess]
-        #self.processes = [MaxiProcess]
-        # self.processes = [DecpAwsProcess, BfcProcess, PesProcess, AwsProcess, AifeProcess, EmarProcess, LyonProcess, MegaProcess]  # Supprimer le BRe car pris en compte dans megalisbre, DecpAwsProcess
-        #self.processes = [DecpAwsProcess, EmarProcess, LyonProcess]  # Supprimer le BRe car pris en compte dans megalisbre, DecpAwsProcess
-        #self.processes = [PesProcess, LyonProcess, EmarProcess]
-        #self.processes = [MegaProcess]
-        #self.processes = [Emar2024Process]
-        #self.processes = [SampleJsonProcess]
-        #self.processes = [SampleXmlProcess]
         self.processes = [Emar2024Process,Pes2024Process,Ppsmj2024Process,Xmarches2024Process,Aws2024Process,Modulademat2024Process,Atexo2024Process]
-        #self.processes = [Proxilegales2024Process,Achatspublicscorse2024Process,Marchespublicspro2024Process,Provencecorse2024Process,Antilleslegales2024Process,Marchedemat2024Process]
-        #self.processes = [Atexo2024Process,Megalis2024Process,Aws2024Process]
-        #self.processes = [Megalis2024Process]
-        #self.processes = [Emar2024Process]
-        #self.processes = [Ppsmj2024Process]
-        #self.processes = [Atexo2024Process]
-        #self.processes = [SampleXmlProcess]
-        #self.processes = [Aife2024Process]
-        #self.processes = [Xmarches2024Process]
-        #self.processes = [Aws2024Process]
-        #self.processes = [Pes2024Process]
-        #self.processes = [Modula2024Process]
-        # if data_format=='2022':
-        # self.processes = [SampleXmlProcess] # For test ECO
-        #self.processes = [SampleJsonProcess] # For test ECO
+        
         self.dataframes = []
         self.data_format = data_format
         self.report = report
