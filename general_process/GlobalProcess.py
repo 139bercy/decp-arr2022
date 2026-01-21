@@ -230,8 +230,9 @@ class GlobalProcess:
         logging.info(f"Nombre de marché en doublon {nb_duplicated_marches}")
 
         mask = df['_type'].ne('Marché')
-        to_drop = df.loc[mask, self.feature_doublons_concession].astype(str).duplicated(keep='last')
-        nb_duplicated_concessions = df.loc[mask, self.feature_doublons_concession].astype(str).duplicated(keep='last').sum()
+        columns_compare = [c for c in self.feature_doublons_concession if c in df.columns] #
+        to_drop = df.loc[mask, columns_compare].astype(str).duplicated(keep='last')
+        nb_duplicated_concessions = df.loc[mask, columns_compare].astype(str).duplicated(keep='last').sum()
         df.drop(index=to_drop[to_drop].index, inplace=True)
         df.reset_index(drop=True, inplace=True)
 

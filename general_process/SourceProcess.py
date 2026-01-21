@@ -370,6 +370,8 @@ class SourceProcess:
                 if 'marches' in dico and 'marche' in dico['marches']:
                     j = 0
                     for marche in dico['marches']['marche']:
+                        if self.title[i]=='donnees-essentielles-marches09.12.2022.01-39.xml':
+                            print(j)
                         if self.convert_nc:
                             NodeFormat.force_bools_nc(['sousTraitanceDeclaree','marcheInnovant','attributionAvance'],marche)
                             NodeFormat.force_floats_nc(['tauxAvance','origineUE','origineFrance','montant'],marche)
@@ -425,7 +427,7 @@ class SourceProcess:
 
             elif self.format == 'json':
                 try:
-                    with open(f"sources/{self.source}/{self.title[i]}", encoding="utf-8") as json_file1:
+                    with open(f"sources/{self.source}/{self.title[i]}", encoding=self.encoding) as json_file1:
                         dico = json.load(json_file1)
                 except Exception as err:
                     logging.error(f"Exception lors du chargement du fichier json {self.title[i]} - {err}")

@@ -101,6 +101,10 @@ def modifier_source(valeur):
         return 'MODULA DEMAT'
     elif valeur == 'data.gouv.fr_atexo':
         return 'ATEXO'
+    elif valeur == 'ville_strasbourg':
+        return 'Eurométropole de Strasbourg'
+    elif valeur == 'euro_strasbourg':
+        return 'Eurométropole de Strasbourg'
     return valeur  # Renvoie la valeur d'origine si aucune correspondance n'est trouvée
 
 
