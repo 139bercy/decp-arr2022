@@ -80,6 +80,12 @@ class SourceProcess:
             self.start_date = pd.to_datetime(f"{self.rebuild_year}-01-01 00:00:00")
             self.end_date = pd.to_datetime(f"{self.rebuild_year}-12-31 23:59:59")
 
+        # Test demo.data.gouv   
+        #self.rebuild_year = "2026"
+        #self.start_date = pd.to_datetime(f"2025-12-17 00:00:00")
+        #self.end_date = pd.to_datetime(f"{self.rebuild_year}-12-31 23:59:59")
+        # End test demo.data.gouv
+        
         # Lavage des dossiers de la source
         self._clean_metadata_folder()
 

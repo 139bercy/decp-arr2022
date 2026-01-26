@@ -354,7 +354,6 @@ class DbDecp:
                 SET data_augmente = %s,
                     est_retenu = TRUE
                 WHERE marche_id = %s
-                AND NOT est_retenu IS TRUE
             """, (json.dumps(json_data),marche_id,))
 
             # Valider la transaction
@@ -511,7 +510,6 @@ class DbDecp:
                             est_retenu = TRUE
                         FROM tmp_updates t
                         WHERE concession.concession_id = t.concession_id
-                        AND marche.est_retenu IS NOT TRUE
                         RETURNING concession.concession_id;
                     """)
                     updated = [r[0] for r in cur.fetchall()]
@@ -567,7 +565,7 @@ class DbDecp:
             cursor = self.connection.cursor()
 
             # Query to select the JSON data from the 'marche' table
-            query = f"SELECT data_out FROM decp.marche WHERE data_out is not null {sub_query}"
+            query = f"SELECT data_out FROM decp.marche WHERE data_out is not null {sub_query}" # AND est_retenu is TRUE"
 
             # Execute the query
             cursor.execute(query)
@@ -576,7 +574,7 @@ class DbDecp:
             json_marche = cursor.fetchall()
 
             # Query to select the JSON data from the 'marche' table
-            query = f"SELECT data_out FROM decp.concession WHERE data_out is not null {sub_query}"
+            query = f"SELECT data_out FROM decp.concession WHERE data_out is not null {sub_query}" # and concession_id =0"
 
             # Execute the query
             cursor.execute(query)
@@ -610,21 +608,22 @@ class DbDecp:
             cursor.close()
         logging.info (f"{file_path} created")
         
-    def extract_json_to_file(self,file_path:str):
-        start_year, start_month = 2024, 1
-        today = date.today()  
-        end_year, end_month = today.year, today.month
+    def extract_json_to_file(self,file_path:str,generate_month=True):
+        if generate_month:
+            start_year, start_month = 2024, 1
+            today = date.today()  
+            end_year, end_month = today.year, today.month
 
-        # Sauvegarde des marchés et concessions uniques regroupées par année et mois de date de 
-        year, month = start_year, start_month
-        while (year, month) <= (end_year, end_month):
-            ref_date = f"{year}-{month:02d}"
-            self.extract_json_to_file_for_month(file_path,ref_date)
-            if month == 12:
-                year += 1
-                month = 1
-            else:
-                month += 1
+            # Sauvegarde des marchés et concessions uniques regroupées par année et mois de date de 
+            year, month = start_year, start_month
+            while (year, month) <= (end_year, end_month):
+                ref_date = f"{year}-{month:02d}"
+                self.extract_json_to_file_for_month(file_path,ref_date)
+                if month == 12:
+                    year += 1
+                    month = 1
+                else:
+                    month += 1
 
         self.extract_json_to_file_for_month(file_path,None)
 
