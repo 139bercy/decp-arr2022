@@ -57,24 +57,22 @@ def main(session_id:str,annee_mois:str, data_format:str = '2022'):
     report.session = session_id
     step = StepMngmt()
     if not step.bypass(StepMngmt.SOURCE_ALL,Step.AUGMENTE_CLEAN):
-        logger.info("Chargement des données")
-        # load data from local
-        args = augmente.utils.parse_args()
-
-        logger.info("Format utilisé " + data_format)
-
+        
         json_source = f"results/global/decp-global-{annee_mois}.json"
 
-        logger.info(f"Opening {json_source}")
+        logger.info(f"Chargement des données du fichier {json_source} au format {data_format}")
         with open(json_source, 'rb') as f:
             # c'est long de charger le json, je conseille de le faire une fois et de sauvegarder le df en pickle pour les tests
             df = augmente.convert_json_to_pandas.manage_modifications(json.load(f),data_format)
+        
+        # load data from local
+        args = augmente.utils.parse_args()
         if args.test:
             #m = math.ceil(len(df.index)/3)
             df = df.sample(n=len(df.index), random_state=1)   #on récupère tous les marchés et concessions
             logger.info("Mode test activé")
 
-        logger.info("Nettoyage des données")
+        # Nettoyage des données
         manage_data_quality(df,annee_mois,data_format)
 
         #Étant donné qu'on ne fait pas l'enrichissement pour l'instant le programme s'arrête
@@ -101,10 +99,31 @@ def modifier_source(valeur):
         return 'MODULA DEMAT'
     elif valeur == 'data.gouv.fr_atexo':
         return 'ATEXO'
+    elif valeur == 'data.gouv.fr_aife':
+        return 'AIFE'
+    elif valeur == 'megalis':
+        return 'Megalis Bretagne'
     elif valeur == 'ville_strasbourg':
         return 'Eurométropole de Strasbourg'
     elif valeur == 'euro_strasbourg':
         return 'Eurométropole de Strasbourg'
+    # Sources 2024
+    elif valeur == 'aife_2024':
+        return 'AIFE'
+    elif valeur == 'aws_2024':
+        return 'AWS'
+    elif valeur == 'modula_2024':
+        return 'MODULA DEMAT'
+    elif valeur == 'pes_2024':
+        return 'DGFIP – PES MARCHE'
+    elif valeur == 'atexo_2024':
+        return 'ATEXO'
+    elif valeur == 'emar_2024':
+        return 'DEMATIS'
+    elif valeur == 'megalis_2024':
+        return 'Megalis Bretagne'
+    elif valeur == 'xmarches_2024':
+        return 'SPL-XDEMAT'
     return valeur  # Renvoie la valeur d'origine si aucune correspondance n'est trouvée
 
 
@@ -203,6 +222,10 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
         df_marche = df.loc[df['_type'].str.contains('March', case=False, na=False)]
         df_concession = df.loc[~df['_type'].str.contains('March', case=False, na=False)]
 
+    if df_marche.empty and df_concession.empty:
+        logging.info("Aucune données à traiter")
+        return
+    
     delete_columns(df_concession,"concession_"+data_format)
     augmente.utils.save_csv(df_concession, "concession.csv")
 
@@ -285,8 +308,13 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
 
     if not df_marche.empty:
         # Mise à jour en base des données retenues 
-        update_database_augmente(df_marche,True)
+        update_database_marches_augmente(df_marche,True)
 
+    if not df_concession.empty:
+        # Mise à jour en base des données retenues 
+        update_database_concessions_augmente(df_concession,True)
+
+    if not df_marche.empty:
         format_data_to_dataeco(df_marche, True)
         cols = conf_glob[f"df_marche_{data_format}"]
         cols.remove("Erreurs")
@@ -297,11 +325,6 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
         df_marche.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'marches-valides/marche-{data_format}-{ref_date}.csv'), index=False, header=True, columns=cols)
 
     if not df_concession.empty:
-        # Mise à jour en base des données retenues 
-        update_database_augmente(df_concession,False)
-        
-        df_concession.drop(columns=['_type','db_id'], inplace=True)
-
         format_data_to_dataeco(df_concession, False)
         cols = conf_glob[f"df_concession_{data_format}"]
         cols.remove("Erreurs")
@@ -313,7 +336,10 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
     
     if not df_marche_badlines.empty:
         format_data_to_dataeco(df_marche_badlines, True)
-        df_marche_badlines.drop(columns=['db_id','_type'],inplace=True)
+        if 'db_id' in df_marche_badlines.columns:
+            df_marche_badlines.drop(columns=['db_id'],inplace=True)
+        if '_type' in df_marche_badlines.columns:
+            df_marche_badlines.drop(columns=['_type'],inplace=True)
         # save data to csv files
         df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'marches-invalides/marche-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True)
     
@@ -325,28 +351,48 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
         df_concession_badlines.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-invalides/concession-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True)
 
 
-def update_database_augmente(df:pd.DataFrame,is_marche:bool):
+def update_database_marches_augmente(df:pd.DataFrame,est_retenu:bool):
     dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
                         for m in df.to_dict(orient='records')]}
     
-    logging.info("Update json data after augmente in database")
+    logging.info("Update json data for merches after augmente in database")
     db = DbDecp()
     if 'marches' in dico:
         i=0
         pairs_marches=[]
         for marche in dico['marches']:
             if not marche['db_id']==0:
-                if is_marche:
-                    pairs_marches.append([int(marche['db_id']),marche])
-                    i+=1
-                    if i % 10000 == 0:
-                        logging.info("Updating 10000 records")
-                        db.bulk_update_marche_augmente(pairs_marches)
-                        pairs_marches=[]
-                else:
-                    db.update_concession_augmente(marche['db_id'],marche)
+                pairs_marches.append([int(marche['db_id']),marche])
+                i+=1
+                if i % 10000 == 0:
+                    logging.info("Updating 10000 records")
+                    db.bulk_update_marche_augmente(pairs_marches)
+                    pairs_marches=[]
         if not pairs_marches==[]:
             db.bulk_update_marche_augmente(pairs_marches)
+    logging.info("Data updated in database")
+    db.close()
+
+
+def update_database_concessions_augmente(df:pd.DataFrame,est_retenu:bool):
+    dico = {'marches': [{k: v for k, v in m.items() if str(v) != 'nan'}
+                        for m in df.to_dict(orient='records')]}
+    
+    logging.info("Update json data for concessions after augmente in database")
+    db = DbDecp()
+    if 'marches' in dico:
+        i=0
+        pairs_concessions=[]
+        for marche in dico['marches']:
+            if not marche['db_id']==0:
+                pairs_concessions.append([int(marche['db_id']),marche])
+                i+=1
+                if i % 10000 == 0:
+                    logging.info("Updating 10000 records")
+                    db.bulk_update_concession_augmente(pairs_concessions)
+                    pairs_concessions=[]
+        if not pairs_concessions==[]:
+            db.bulk_update_concession_augmente(pairs_concessions)
     logging.info("Data updated in database")
     db.close()
 
@@ -501,7 +547,7 @@ def order_columns_concessions(df: pd.DataFrame):
     "donneesExecution.intituleTarif",
     "donneesExecution.tarif",
     "backup__dureeMois",
-    "bd_id"
+    "db_id"
     ]
 
     #On garde que les colonnes présentes dans le dataframe
