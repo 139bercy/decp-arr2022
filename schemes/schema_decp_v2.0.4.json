@@ -2,6 +2,7 @@
   "$id": "https://raw.githubusercontent.com/139bercy/format-commande-publique/master/marches.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Format réglementaire de publication des données essentielles des marchés publics français",
+  "type": "object",
   "properties": {
     "marches": {
       "title": "Marché et concessions",
@@ -21,7 +22,6 @@
           }
         }
       },
-      "uniqueItems": true,
       "anyOf": [
         { "required": ["marche"] },
         { "required": ["contrat-concession"] }
@@ -31,12 +31,14 @@
   "required": ["marches"],
   "definitions": {
     "marcheList": {
-      "type": "object",
-      "$ref": "#/definitions/marche"
+		"allOf": [
+		  { "$ref": "#/definitions/marche" }
+		]
     },
     "contrat-concessionList": {
-      "type": "object",
-      "$ref": "#/definitions/contrat-concession"
+ 		"allOf": [
+		  { "$ref": "#/definitions/contrat-concession" }
+		]
     },
     "marche": {
       "title": "Format réglementaire de publication des données essentielles des marchés publics français",

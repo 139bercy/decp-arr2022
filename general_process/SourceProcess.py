@@ -188,30 +188,13 @@ class SourceProcess:
             if old_ressources==[]:
                 url = url + [d["url"] for d in ressources if
                             (d["url"].endswith("xml") or d["url"].endswith("json"))]
-                title = title + [prefix+d["title"] for d in ressources if
+                title = title + [prefix+(d["id"] if not prefix == '' else '')+d["title"] for d in ressources if
                             (d["url"].endswith("xml") or d["url"].endswith("json"))]
                 url_date = url_date + [d["last_modified"] for d in ressources if
                             (d["url"].endswith("xml") or d["url"].endswith("json"))]
             else: 
-                url, title, url_date = self.check_date_file(url,title, url_date, ressources, old_ressources,prefix)
+                url, title, url_date = self.check_date_file(url,title, url_date, ressources, old_ressources, prefix)
             
-            if url is not None and len(url) > 0:
-                # Trier les tableaux par ordre de date de creation du fichier
-                combined = list(zip(url_date, url, title))
-                combined.sort(key=lambda t: pd.to_datetime(t[0]).tz_localize(None))  # tri croissant par date
-
-                # dézipper pour retrouver les listes triées
-                url_date_sorted, url_sorted, title_sorted = zip(*combined)
-
-                # Recupérer sous forme de liste
-                url = list(url_sorted)
-                title = list(title_sorted)
-                url_date = list(url_date_sorted)
-
-                # Filter file by date in title, url
-                
-            url, title, url_date = self.filter_urls(url, title, url_date)            
-
             if self.rebuild_year is None or self.save_metadata:
                 #Cas où les fichiers old_metadata existent: on écrit dedans à nouveau
                 if os.path.exists(f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json"):
@@ -223,6 +206,22 @@ class SourceProcess:
                 else:
                     shutil.copy(f"metadata/{self.source}/metadata_{self.key}_{i}.json",f"old_metadata/{self.source}/old_metadata_{self.key}_{i}.json")
                     logging.info(os.listdir(f"old_metadata/{self.source}"))
+
+        # Filter file by date in title, url
+        url, title, url_date = self.filter_urls(url, title, url_date)            
+
+        if url is not None and len(url) > 0:
+            # Trier les tableaux par ordre de date de creation du fichier
+            combined = list(zip(url_date, url, title))
+            combined.sort(key=lambda t: pd.to_datetime(t[0]).tz_localize(None))  # tri croissant par date
+
+            # dézipper pour retrouver les listes triées
+            url_date_sorted, url_sorted, title_sorted = zip(*combined)
+
+            # Recupérer sous forme de liste
+            url = list(url_sorted)
+            title = list(title_sorted)
+            url_date = list(url_date_sorted)
 
         return url,title,url_date
 
@@ -300,7 +299,7 @@ class SourceProcess:
                     if load:
                         dl.start(url=self.url[i],file_path=f"sources/{self.source}/{self.title[i]}",retries=10,display=False)
                         logging.info(f"Fichier : {self.title[i]} telechargé ")
-                except:
+                except Exception as err:
                     logging.error(f"Problème de téléchargement du fichier {self.url[i]}")
         logging.info(f"Téléchargement : {len(self.url)} fichier(s) OK")
 
@@ -696,7 +695,7 @@ class SourceProcess:
 
     def _validate_json(self, json_data:dict,json_scheme:dict) -> tuple[bool,str,str]:
         """
-        Fonction vérifiant si le fichier jsn "json_data" respecte
+        Fonction vérifiant si le fichier json "json_data" respecte
         le schéma spécifié dans le  schéma en paramètre "json_scheme". 
 
         Args: 
