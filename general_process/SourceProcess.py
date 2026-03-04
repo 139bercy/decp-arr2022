@@ -40,6 +40,8 @@ class SourceProcess:
     variables de classe (__init__), nettoyage des dossiers de la source (_clean_metadata_folder),
     récupération des URLs (_url_init), get, convert et fix."""
     
+    API_DATA_GOUV = "https://www.data.gouv.fr/api/1"
+
     def __init__(self, key:str, params:ProcessParams):
         """L'étape __init__ crée les variables associées à la classe SourceProcess : key, source,
         format, df, title, url, cle_api et metadata.
@@ -83,7 +85,7 @@ class SourceProcess:
 
         # Test demo.data.gouv   
         #self.rebuild_year = "2026"
-        #self.start_date = pd.to_datetime(f"2025-12-17 00:00:00")
+        #self.start_date = pd.to_datetime(f"2026-02-20 01:00:00")
         #self.end_date = pd.to_datetime(f"{self.rebuild_year}-12-31 23:59:59")
         # End test demo.data.gouv
 
@@ -156,7 +158,7 @@ class SourceProcess:
             #Téléchargement du fichier de metadata de self.source et création de la 1ere variable json pour la comparaison 
             try:
                 # Replaced after certifi can't validate ssl certificat
-                wget.download(f"https://www.data.gouv.fr/api/1/datasets/{self.cle_api[i]}/",
+                wget.download(f"{self.API_DATA_GOUV}/datasets/{self.cle_api[i]}/",
                             f"metadata/{self.source}/metadata_{self.key}_{i}.json")
                 #url = f"https://www.data.gouv.fr/api/1/datasets/{self.cle_api[i]}/"
                 #context = ssl.create_default_context(cafile=certifi.where())
@@ -288,7 +290,7 @@ class SourceProcess:
                 try:
                     load = False
                     if os.path.exists(f"sources/{self.source}/{self.title[i]}"):
-                        if UtilsFile.last_modification(f"sources/{self.source}/{self.title[i]}") < self.url_date[i]:
+                        if UtilsFile.last_modification(f"sources/{self.source}/{self.title[i]}") < pd.to_datetime(self.url_date[i]).tz_localize(None):
                             os.remove(f"sources/{self.source}/{self.title[i]}")
                             logging.info(f"Fichier : {self.title[i]} existe déjà, nettoyage du doublon ")
                             load = True
