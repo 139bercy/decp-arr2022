@@ -21,7 +21,6 @@ from stdnum.fr import siren
 from stdnum.util import clean
 
 from reporting.Report import Report
-from augmente.utils import RESULT_PATH_DATAECO
 
 PATTERN_DATE = r'^20[1-3]{1}[0-9]{1}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}$'
 
@@ -316,6 +315,12 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
         # Mise à jour en base des données retenues 
         update_database_concessions_augmente(df_concession,True)
 
+    if not (os.path.exists(conf_data["path_to_data_dataeco"])):
+        os.mkdir(conf_data["path_to_data_dataeco"])
+        os.mkdir(os.path.join(conf_data["path_to_data_dataeco"], f'marches-valides'))
+        os.mkdir(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-valides'))
+        os.mkdir(os.path.join(conf_data["path_to_data_dataeco"], f'marches-invalides'))
+        os.mkdir(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-invalides'))
     if not df_marche.empty:
         format_data_to_dataeco(df_marche, True)
         cols = conf_glob[f"df_marche_{data_format}"]
