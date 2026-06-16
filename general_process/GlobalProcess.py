@@ -706,52 +706,11 @@ class GlobalProcess:
         concessions = []
         for marche_in in dico_in['marches']:
             marche = utilsJson.format_json(marche_in.copy(),False)
+            
             if 'db_id' in marche:
                 del marche["db_id"]
-
-            """
-            delete_attributes_by_prefix(marche,'report__')
-            delete_attributes_by_prefix(marche,'tmp__')
-
-            if 'idAccordCadre' in marche and (marche['idAccordCadre'] == '' or pd.isna(marche['idAccordCadre'])):
-                del marche["idAccordCadre"]
-            if 'origineUE' in marche and (marche['origineUE'] == '' or pd.isna(marche['origineUE'])):
-                del marche["origineUE"]
-            if 'origineFrance' in marche and (marche['origineFrance'] == '' or pd.isna(marche['origineFrance'])):
-                del marche["origineFrance"]
-            if 'tauxAvance' in marche and (marche['tauxAvance'] == '' or pd.isna(marche['tauxAvance'])):
-                del marche["tauxAvance"]
-
-            if 'modifications' in marche and isinstance(marche['modifications'],list) and len(marche['modifications'])==0:
-                del marche['modifications']                
-            if 'actesSousTraitance' in marche \
-                and ((isinstance(marche['actesSousTraitance'],list) and len(marche['actesSousTraitance'])==0) \
-                    or (isinstance(marche['actesSousTraitance'],str) and marche['actesSousTraitance']=='') or \
-                    (not isinstance(marche['actesSousTraitance'],list) and pd.isna(marche['actesSousTraitance']))):
-                del marche['actesSousTraitance']  
-            if 'modificationsActesSousTraitance' in marche \
-                and ((isinstance(marche['modificationsActesSousTraitance'],list) and len(marche['modificationsActesSousTraitance'])==0) \
-                    or (isinstance(marche['modificationsActesSousTraitance'],str) and marche['modificationsActesSousTraitance']=='') or \
-                    (not isinstance(marche['modificationsActesSousTraitance'],list) and pd.isna(marche['modificationsActesSousTraitance']))):
-                del marche['modificationsActesSousTraitance']  
-
-            if 'backup__montant' in marche_in:
-                marche['montant'] = marche['backup__montant']
-                del marche['backup__montant']
-            if 'backup__datePublicationDonnees' in marche_in:
-                if not pd.isnull(marche['backup__datePublicationDonnees']):
-                    marche['datePublicationDonnees'] = marche['backup__datePublicationDonnees']
-                del marche['backup__datePublicationDonnees']
-            
-            self._restore_attributes_by_prefix(marche,'backup__')
-            self._restore_attributes_by_prefix_in_node(marche,'actesSousTraitance','acteSousTraitance','backup__')
-
-            self.force_int_or_nc('dureeMois',marche)
-            self.force_int_or_nc('offresRecues',marche)
-            self.force_bool_or_nc('marcheInnovant',marche)
-            self.force_bool_or_nc('attributionAvance',marche)
-            self.force_bool_or_nc('sousTraitanceDeclaree',marche)
-            """
+            if 'ref__file_date' in marche:
+                del marche["ref__file_date"]
         
             if '_type' in marche and marche['_type'] != 'Marché':
                 if 'montant' in marche:
