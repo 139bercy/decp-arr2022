@@ -472,7 +472,7 @@ class SourceProcess:
                     logging.error(f"Exception lors de la validation du format des données dans {self.title[i]} : {err}")
                     tb = traceback.format_exc()
                     logging.error(tb)
-        else:
+            else:
                 logging.warning(f"Aucune clé 'marches' trouvée dans {self.title[i]}")
                 
         logging.info("Fin du nettoyage des nouveaux fichier")
