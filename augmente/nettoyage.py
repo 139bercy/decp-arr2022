@@ -269,6 +269,9 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
 
             df_concession = concession_mark_fields(df_concession)
 
+        if not df_concession_badlines.empty:
+            complete_columns(df_concession_badlines,"concession_"+data_format,True) #df_concession_badlines = 
+
         if not df_marche.empty:
             restore_nc(df_marche,'offresRecues')
             restore_nc(df_marche,'marcheInnovant')
@@ -282,6 +285,9 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
             stabilize_columns(df_marche_badlines,"marche_"+data_format,True) #df_marche_badlines = 
             
             df_marche = marche_mark_fields(df_marche)
+
+        if not df_marche_badlines.empty:
+            complete_columns(df_marche_badlines,"marche_"+data_format,True)
 
     # Reporting
     report.nb_out_bad_concessions = len(df_concession_badlines)
@@ -325,21 +331,23 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
         os.mkdir(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-invalides'))
     if not df_marche.empty:
         format_data_to_dataeco(df_marche, True)
-        cols = conf_glob[f"df_marche_{data_format}"]
-        cols.remove("Erreurs")
-        cols.remove("db_id")
-        cols.remove("_type")
-        cols.remove("_type")
+        cols = get_columns('marche_'+data_format,False)
+        #cols.remove("Erreurs")
+        if "db_id" in cols:
+            cols.remove("db_id")
+        if "_type" in cols:
+            cols.remove("_type")
+        #cols.remove("_type")
         # save data to csv files
         df_marche.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'marches-valides/marche-{data_format}-{ref_date}.csv'), index=False, header=True, columns=cols, sep=';', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
 
     if not df_concession.empty:
         format_data_to_dataeco(df_concession, False)
-        cols = conf_glob[f"df_concession_{data_format}"]
-        cols.remove("Erreurs")
+        cols = get_columns('concession_'+data_format,False)
+        #cols.remove("Erreurs")
         cols.remove("db_id")
         cols.remove("_type")
-        cols.remove("_type")
+        #cols.remove("_type")
         # save data to csv files
         df_concession.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'concessions-valides/concession-{data_format}-{ref_date}.csv'), index=False, header=True, columns=cols, sep=';', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
     
@@ -350,8 +358,6 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
             cols.remove("db_id")
         if "_type" in cols:
             cols.remove("_type")
-        if "_type" in cols:
-            cols.remove("_type")
         # save data to csv files
         df_marche_badlines.to_csv(os.path.join(conf_data["path_to_data_dataeco"], f'marches-invalides/marche-exclu-{data_format}-{ref_date}.csv'), index=False,  header=True, columns=cols, sep=';', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
     
@@ -360,8 +366,6 @@ def manage_data_quality(df: pd.DataFrame,ref_date: str, data_format: str):
         cols = ["Erreurs"] + conf_glob[f"df_concession_{data_format}"]
         if "db_id" in cols:
             cols.remove("db_id")
-        if "_type" in cols:
-            cols.remove("_type")
         if "_type" in cols:
             cols.remove("_type")
         #df_concession_badlines.drop(columns=['db_id','_type'],inplace=True)
@@ -593,30 +597,42 @@ def order_columns_concessions(df: pd.DataFrame):
     df = df.reindex(colonnes_presentes, axis=1)
     return df
 
-def stabilize_columns(df:pd.DataFrame,set:str,add_error_columnns:bool=False):
-    """
-    On ajoute des colonnes vides si celles-ci doivent exister et on supprimer les colonnes en trop
-    """
-    columns_reference = conf_glob["df_"+set]
+def get_columns(set_name:str,add_error_columnns:bool=False):
+    columns_reference = list(conf_glob["df_"+set_name])
     columns_reference.insert(0, "_type")
     if add_error_columnns is True:
         columns_reference.insert(0, "Erreurs")
-        if 'Erreurs' not in df.columns:
-            df['Erreurs'] = pd.NA
     else:
         columns_reference.insert(0, "db_id")
-        
+
+    return columns_reference
+
+def complete_columns(df:pd.DataFrame,set_name:str,add_error_columnns:bool=False):
+    """
+    On ajoute des colonnes vides si celles-ci doivent exister f' après la liste en entrée 
+    """
+    columns_reference = get_columns(set_name,add_error_columnns)
+
     # Add column in df
     for column in columns_reference:
         if column not in df.columns:
             df[column] = pd.NA
+
+
+def stabilize_columns(df:pd.DataFrame,set_name:str,add_error_columnns:bool=False):
+    """
+    On ajoute des colonnes vides si celles-ci doivent exister et on supprimer les colonnes en trop
+    """
+
+    complete_columns(df,set_name,add_error_columnns)
+
+    columns_reference = get_columns(set_name,add_error_columnns)
 
     # Delete columns in df which are not in columns_reference
     for column in df.columns:
         if column not in columns_reference:
             df.drop(columns=[column], inplace=True)
             
-    #return df[columns_reference]
 
 @compute_execution_time
 def regles_marche(df_marche_: pd.DataFrame,data_format:str) -> pd.DataFrame:
