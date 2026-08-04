@@ -634,7 +634,7 @@ class GlobalProcess:
                 marche = marche_in.copy()
 
                 if '_type' not in marche:
-                    logging.error(f"Exception lors de la rewtoration des enregistrements pour écriture du fichier json - {err}")
+                    logging.error(f"Exception lors de la restoration des enregistrements pour écriture du fichier json - {marche['id']}")
 
                 if 'backup__offresRecues' in marche:
                     marche['backup__offresRecues']=int(marche['backup__offresRecues']) if not pd.isna(marche['backup__offresRecues']) and marche['backup__offresRecues']!='NC' else marche['backup__offresRecues']
