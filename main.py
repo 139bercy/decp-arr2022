@@ -1,3 +1,11 @@
+import os
+from utils.cli import parse_args, configure_test_mode
+
+# Le mode test doit être configuré AVANT les imports du projet : plusieurs modules
+# (StepMngmt, GlobalProcess, data_management, upload_dataeco) figent les chemins à l'import.
+if parse_args().test:
+    configure_test_mode()
+
 from database.DbDecp import DbDecp
 from general_process.ProcessFactory import ProcessFactory
 from general_process.GlobalProcess import GlobalProcess
@@ -6,10 +14,10 @@ import logging
 from datetime import date,datetime
 from utils.StepMngmt import StepMngmt
 from utils.Step import Step
+from utils import Paths
 import augmente.data_management
 import augmente.nettoyage
 import augmente.utils
-import os
 import traceback
 
 
@@ -47,7 +55,8 @@ def main(report,data_format:str = "2022"):
     gp.generate_export(args.local)
     gp.generate_global()
 
-    if not args.local:
+    # Pas de publication sur data.gouv en mode local ou en mode test
+    if not args.local and not args.test:
         # gp.upload_s3()
         suffixes = gp.get_suffixes_exported_files()
         gp.upload_on_datagouv(suffixes)
@@ -59,7 +68,7 @@ def main_augmente(session_id:str,data_format:str = '2022'):
     
     logger.info("Téléchargement des fichiers de données")
     augmente.data_management.main()
-    logger.info("Fichiers mis à jour dans le dossier data")
+    logger.info(f"Fichiers mis à jour dans le dossier {Paths.REFERENTIELS_DIR}")
 
     logger.info(f"Application règles métier format {data_format}")
     start_year, start_month = 2024, 1
@@ -89,9 +98,9 @@ if __name__ == "__main__":
     
     args = augmente.utils.parse_args()
     
-    os.makedirs("logs", exist_ok=True)
+    os.makedirs(Paths.LOGS_DIR, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_filename = f"logs/app_{timestamp}.log"
+    log_filename = os.path.join(Paths.LOGS_DIR, f"app_{timestamp}.log")
     file_handler = logging.FileHandler(filename=log_filename, mode='a', encoding='utf-8')
     file_handler.setLevel(logging.INFO)
 
@@ -120,6 +129,7 @@ if __name__ == "__main__":
     logging.info("(-a) Option exécution de decp-augmente uniquement " + ("activée" if args.augmente else "désactivée"))
     logging.info("(-l) Option exécution locale " + ("activée" if args.local else "désactivée"))
     logging.info("(-t) Option exécution en mode test " + ("activée" if args.test else "désactivée"))
+    logging.info(f"     Répertoire de données : {Paths.DATA_DIR} - Base de données : {DbDecp.db_name()}")
     logging.info("(-r) Option reprise à la dernière étape exécutée " + ("desactivée" if args.reset else "activée"))
     logging.info("(-b) Option reconstruction globale " + ("activée pour " if args.rebuild else "désactivée") + (args.rebuild if args.rebuild else ""))
     logging.info("(-P) Option process spécifique " + ("activée pour " if args.process else "désactivée") + (args.process if args.process else ""))
@@ -141,7 +151,7 @@ if __name__ == "__main__":
         try:
             # DECP RAMA
             if not args.augmente:
-                main(report,data_format)
+                 main(report,data_format)
 
             # DECP AUGMENTE
             if not args.rama:
